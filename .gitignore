@@ -1,0 +1,21 @@
+# Binarios y archivos compilados
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+
+# Archivos comprimidos y copias temporales
+*.rar
+*.zip
+*.7z
+*.tar.gz
+
+# Logs y temporales
+*.log
+*.tmp
+.env
+
+# Sistema operativo
+.DS_Store
+Thumbs.db

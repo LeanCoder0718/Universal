@@ -1,0 +1,116 @@
+package progress
+
+import (
+	"sync"
+	"time"
+)
+
+// AdaptiveSchedulerOptions contiene los parámetros del programador adaptativo.
+type AdaptiveSchedulerOptions struct {
+	TotalItems    int           // Total de líneas / combos (N)
+	NumWorkers    int           // Número de goroutines / threads (W)
+	MinChunkSize  int           // Tamaño mínimo permitido (default 1)
+	MaxChunkSize  int           // Tamaño máximo permitido (default 5000)
+	TargetLatency time.Duration // Latencia objetivo por chunk (default 150ms)
+	Alpha         float64       // Factor de suavizado EWMA (default 0.2)
+}
+
+// AdaptiveScheduler ajusta dinámicamente el chunkSize en función de N, W y la latencia observada.
+type AdaptiveScheduler struct {
+	mu             sync.RWMutex
+	opts           AdaptiveSchedulerOptions
+	currentChunkSz int
+	ewmaLatency    float64
+}
+
+// NewAdaptiveScheduler crea una nueva instancia de AdaptiveScheduler con cálculo de base inicial N/4W.
+func NewAdaptiveScheduler(opts AdaptiveSchedulerOptions) *AdaptiveScheduler {
+	if opts.MinChunkSize <= 0 {
+		opts.MinChunkSize = 1
+	}
+	if opts.MaxChunkSize <= 0 {
+		opts.MaxChunkSize = 5000
+	}
+	if opts.TargetLatency <= 0 {
+		opts.TargetLatency = 150 * time.Millisecond
+	}
+	if opts.Alpha <= 0 {
+		opts.Alpha = 0.2
+	}
+
+	// Cálculo de bloque base inicial: N / (4 * W)
+	initialSz := 1000
+	if opts.TotalItems > 0 && opts.NumWorkers > 0 {
+		baseCalculated := opts.TotalItems / (4 * opts.NumWorkers)
+		if baseCalculated < opts.MinChunkSize {
+			baseCalculated = opts.MinChunkSize
+		}
+		if baseCalculated > opts.MaxChunkSize {
+			baseCalculated = opts.MaxChunkSize
+		}
+		initialSz = baseCalculated
+	}
+
+	return &AdaptiveScheduler{
+		opts:           opts,
+		currentChunkSz: initialSz,
+	}
+}
+
+// CurrentChunkSize retorna el tamaño de chunk recomendado considerando el remanente (Tapering anti-straggler).
+func (s *AdaptiveScheduler) CurrentChunkSize(remainingItems int) int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	baseSz := s.currentChunkSz
+
+	// Tapering de Cola: Si quedan pocos ítems, reducir el tamaño para reparto uniforme
+	if remainingItems > 0 && s.opts.NumWorkers > 0 {
+		taperLimit := 2 * s.opts.NumWorkers * baseSz
+		if remainingItems <= taperLimit {
+			taperSz := remainingItems / (2 * s.opts.NumWorkers)
+			if taperSz < s.opts.MinChunkSize {
+				taperSz = s.opts.MinChunkSize
+			}
+			if taperSz < baseSz {
+				return taperSz
+			}
+		}
+	}
+
+	return baseSz
+}
+
+// RecordLatency registra la latencia observada de un chunk y ajusta el tamaño recomendado mediante EWMA.
+func (s *AdaptiveScheduler) RecordLatency(elapsed time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	latMs := float64(elapsed.Milliseconds())
+	if latMs <= 0 {
+		latMs = 1.0
+	}
+
+	if s.ewmaLatency == 0 {
+		s.ewmaLatency = latMs
+	} else {
+		s.ewmaLatency = s.opts.Alpha*latMs + (1-s.opts.Alpha)*s.ewmaLatency
+	}
+
+	targetMs := float64(s.opts.TargetLatency.Milliseconds())
+	if targetMs <= 0 {
+		targetMs = 150.0
+	}
+
+	ratio := targetMs / s.ewmaLatency
+	newSize := int(float64(s.currentChunkSz) * ratio)
+
+	if newSize < s.opts.MinChunkSize {
+		newSize = s.opts.MinChunkSize
+	}
+	if newSize > s.opts.MaxChunkSize {
+		newSize = s.opts.MaxChunkSize
+	}
+
+	s.currentChunkSz = newSize
+}
