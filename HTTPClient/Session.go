@@ -11,9 +11,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"RABBIT/Universal/GeoRoute"
-	"RABBIT/Universal/HTTPClient/Profiles"
-	retry "RABBIT/Universal/HTTPClient/Retry"
+	"github.com/LeanCoder0718/Universal/GeoRoute"
+	"github.com/LeanCoder0718/Universal/HTTPClient/Profiles"
+	retry "github.com/LeanCoder0718/Universal/HTTPClient/Retry"
 
 	fhttp "github.com/bogdanfinn/fhttp"
 	"github.com/fatih/color"

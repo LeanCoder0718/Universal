@@ -13,7 +13,7 @@
 package Workers
 
 import (
-	"RABBIT/Universal/HTTPClient"
+	"github.com/LeanCoder0718/Universal/HTTPClient"
 	"context"
 	"errors"
 	"fmt"

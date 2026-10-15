@@ -1,8 +1,8 @@
 package Workers
 
 import (
-	"RABBIT/Universal/HTTPClient"
-	"RABBIT/Universal/HTTPClient/Profiles"
+	"github.com/LeanCoder0718/Universal/HTTPClient"
+	"github.com/LeanCoder0718/Universal/HTTPClient/Profiles"
 	"fmt"
 	"runtime"
 	"strings"

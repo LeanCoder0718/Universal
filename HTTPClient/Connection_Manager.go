@@ -1,7 +1,7 @@
 package HTTPClient
 
 import (
-	"RABBIT/Universal/GeoRoute"
+	"github.com/LeanCoder0718/Universal/GeoRoute"
 	"context"
 	"fmt"
 	"strings"

@@ -1,7 +1,7 @@
 package HTTPClient
 
 import (
-	"RABBIT/Universal/HTTPClient/Profiles"
+	"github.com/LeanCoder0718/Universal/HTTPClient/Profiles"
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"

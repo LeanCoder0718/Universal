@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"RABBIT/Universal/HTTPClient/Profiles"
+	"github.com/LeanCoder0718/Universal/HTTPClient/Profiles"
 )
 
 // TestProfileRegistry_Categories verifies that Browser, Android, and IOS categories

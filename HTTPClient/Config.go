@@ -1,7 +1,7 @@
 package HTTPClient
 
 import (
-	retry "RABBIT/Universal/HTTPClient/Retry"
+	retry "github.com/LeanCoder0718/Universal/HTTPClient/Retry"
 	"fmt"
 	"time"
 )

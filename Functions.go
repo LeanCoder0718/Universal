@@ -1,7 +1,7 @@
 package Universal
 
 import (
-	"RABBIT/Universal/Utils"
+	"github.com/LeanCoder0718/Universal/Utils"
 	"os"
 	"os/exec"
 	"syscall"

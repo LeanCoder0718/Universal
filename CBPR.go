@@ -1,8 +1,8 @@
 package Universal
 
 import (
-	"RABBIT/Universal/GeoRoute"
-	"RABBIT/Universal/Utils"
+	"github.com/LeanCoder0718/Universal/GeoRoute"
+	"github.com/LeanCoder0718/Universal/Utils"
 	"bufio"
 	"bytes"
 	"fmt"
