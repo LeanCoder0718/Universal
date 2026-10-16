@@ -36,7 +36,7 @@ var (
 	LimeGreen  = Utils.LimeGreen
 	Cyan       = Utils.Cyan
 
-	Titulo      = "[RABBIT YAHOO] [v1.2]"
+	Titulo      = "[RABBIT]"
 	LogoHandler func(title string)
 	Modulo      = ""
 )
