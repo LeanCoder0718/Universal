@@ -76,12 +76,27 @@ type sessionParams struct {
 	connMgr        *ConnectionManager
 	profileSpec    *Profiles.ProfileSpec // nil = usa ProfileManager o sistema legacy
 	profileManager *Profiles.Manager     // nil = usa ProfileSpec o sistema legacy
-	allowedHosts   []string
+	allowedHosts    []string
+	enableSessionID *bool
 }
 
 // WithAllowedSessionHosts restringe la inyección de x-session-id a los hosts/dominios especificados.
 func WithAllowedSessionHosts(hosts ...string) Option {
 	return func(p *sessionParams) { p.allowedHosts = append(p.allowedHosts, hosts...) }
+}
+
+// WithEnableSessionID habilita o deshabilita la inyección de x-session-id a nivel de Session.
+func WithEnableSessionID(enabled ...bool) Option {
+	val := true
+	if len(enabled) > 0 {
+		val = enabled[0]
+	}
+	return func(p *sessionParams) { p.enableSessionID = &val }
+}
+
+// WithSessionID configura explícitamente si se inyecta x-session-id a nivel de Session.
+func WithSessionID(enabled bool) Option {
+	return func(p *sessionParams) { p.enableSessionID = &enabled }
 }
 
 func WithIdentityOptions(opts ...IdentityOption) Option {
@@ -191,6 +206,10 @@ func NewSession(cfg *Config, opts ...Option) (*Session, error) {
 
 	if len(params.allowedHosts) > 0 {
 		cfg.Browser.AllowedSessionHosts = append(cfg.Browser.AllowedSessionHosts, params.allowedHosts...)
+	}
+
+	if params.enableSessionID != nil {
+		cfg.Browser.EnableSessionID = *params.enableSessionID
 	}
 
 	s := &Session{
@@ -423,6 +442,9 @@ func (s *Session) ResetStickyID() string {
 // Si no está definido, se autoriza por defecto siempre que la URL sea válida y no apunte a un esquema ajeno.
 func (s *Session) isAuthorizedTarget(u *url.URL) bool {
 	if u == nil || u.Host == "" {
+		return false
+	}
+	if s.cfg == nil || !s.cfg.Browser.EnableSessionID {
 		return false
 	}
 	targetHost := strings.ToLower(u.Host)

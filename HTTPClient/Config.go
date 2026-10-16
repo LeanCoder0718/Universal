@@ -115,6 +115,7 @@ type TransportConfig struct {
 type BrowserConfig struct {
 	FollowRedirects     bool
 	AllowedSessionHosts []string
+	EnableSessionID     bool // false por defecto: no inyecta x-session-id a menos que se active
 }
 
 type WorkerConfig struct {

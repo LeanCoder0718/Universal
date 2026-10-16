@@ -100,7 +100,7 @@ func TestSession_StickyID_StabilityAcrossRequests(t *testing.T) {
 	defer ts.Close()
 
 	cfg := Default()
-	sess, err := NewSession(cfg, WithTransportFactory(&testLoopbackFactory{transport: ts.Client().Transport}))
+	sess, err := NewSession(cfg, WithEnableSessionID(), WithTransportFactory(&testLoopbackFactory{transport: ts.Client().Transport}))
 	if err != nil {
 		t.Fatalf("error creando session: %v", err)
 	}
@@ -159,13 +159,13 @@ func TestSession_StickyID_IsolationBetweenSessions(t *testing.T) {
 	factory := &testLoopbackFactory{transport: ts.Client().Transport}
 	cfg := Default()
 
-	sessA, err := NewSession(cfg, WithTransportFactory(factory))
+	sessA, err := NewSession(cfg, WithEnableSessionID(), WithTransportFactory(factory))
 	if err != nil {
 		t.Fatalf("error creando sessA: %v", err)
 	}
 	defer sessA.Close()
 
-	sessB, err := NewSession(cfg, WithTransportFactory(factory))
+	sessB, err := NewSession(cfg, WithEnableSessionID(), WithTransportFactory(factory))
 	if err != nil {
 		t.Fatalf("error creando sessB: %v", err)
 	}
@@ -202,7 +202,7 @@ func TestSession_StickyID_CallerCannotOverwrite(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	sess, err := NewSession(Default(), WithTransportFactory(&testLoopbackFactory{transport: ts.Client().Transport}))
+	sess, err := NewSession(Default(), WithEnableSessionID(), WithTransportFactory(&testLoopbackFactory{transport: ts.Client().Transport}))
 	if err != nil {
 		t.Fatalf("error creando sesión: %v", err)
 	}
@@ -236,7 +236,7 @@ func TestSession_StickyID_CallerCannotOverwrite(t *testing.T) {
 
 // 4. Test: ResetComboState renueva la identidad de sesión pero mantiene la reutilización de sockets/recursos.
 func TestSession_StickyID_ResetComboIsolation(t *testing.T) {
-	sess, err := NewSession(Default(), WithTransportFactory(&testLoopbackFactory{}))
+	sess, err := NewSession(Default(), WithEnableSessionID(), WithTransportFactory(&testLoopbackFactory{}))
 	if err != nil {
 		t.Fatalf("error creando sesión: %v", err)
 	}
@@ -308,7 +308,7 @@ func TestSession_StickyID_RetriesPreserveID(t *testing.T) {
 	cfg.Retry.WaitMin = 10 * time.Millisecond
 	cfg.Retry.WaitMax = 50 * time.Millisecond
 
-	sess, err := NewSession(cfg, WithTransportFactory(&testLoopbackFactory{transport: ts.Client().Transport}))
+	sess, err := NewSession(cfg, WithEnableSessionID(), WithTransportFactory(&testLoopbackFactory{transport: ts.Client().Transport}))
 	if err != nil {
 		t.Fatalf("error creando sesión: %v", err)
 	}
@@ -361,7 +361,7 @@ func TestSession_StickyID_TargetRestriction(t *testing.T) {
 
 	cfg := Default()
 	sess, err := NewSession(cfg,
-		WithTransportFactory(&testLoopbackFactory{transport: tsAllowed.Client().Transport}),
+		WithEnableSessionID(), WithTransportFactory(&testLoopbackFactory{transport: tsAllowed.Client().Transport}),
 		WithAllowedSessionHosts(uAllowed.Host),
 	)
 	if err != nil {
@@ -406,7 +406,7 @@ func TestSession_StickyID_ConcurrentSafe(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	sess, err := NewSession(Default(), WithTransportFactory(&testLoopbackFactory{transport: ts.Client().Transport}))
+	sess, err := NewSession(Default(), WithEnableSessionID(), WithTransportFactory(&testLoopbackFactory{transport: ts.Client().Transport}))
 	if err != nil {
 		t.Fatalf("error creando sesión: %v", err)
 	}
@@ -464,7 +464,7 @@ func TestSession_StickyID_DebugLogMasking(t *testing.T) {
 	cfg := Default()
 	cfg.Debug = true
 
-	sess, err := NewSession(cfg, WithTransportFactory(&testLoopbackFactory{transport: ts.Client().Transport}))
+	sess, err := NewSession(cfg, WithEnableSessionID(), WithTransportFactory(&testLoopbackFactory{transport: ts.Client().Transport}))
 	if err != nil {
 		color.Output = oldColorOutput
 		os.Stdout = oldStdout
@@ -497,5 +497,35 @@ func TestSession_StickyID_DebugLogMasking(t *testing.T) {
 	masked := sid[:4] + "***" + sid[len(sid)-4:]
 	if !strings.Contains(output, masked) {
 		t.Errorf("el log de depuración no contiene el valor anonimizado esperado %q", masked)
+	}
+}
+
+// 10. Test: Por defecto x-session-id está deshabilitado y no se envía en peticiones.
+func TestSession_StickyID_DisabledByDefault(t *testing.T) {
+	var receivedID string
+	var mu sync.Mutex
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		receivedID = r.Header.Get("x-session-id")
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	sess, err := NewSession(Default(), WithTransportFactory(&testLoopbackFactory{transport: ts.Client().Transport}))
+	if err != nil {
+		t.Fatalf("error creando sesión: %v", err)
+	}
+	defer sess.Close()
+
+	res, err := sess.Do(context.Background(), Spec{Method: "GET", URL: ts.URL, Kind: KindDocument})
+	if err != nil {
+		t.Fatalf("error en Do: %v", err)
+	}
+	res.Release()
+
+	if receivedID != "" {
+		t.Errorf("x-session-id no debe enviarse por defecto, recibido: %q", receivedID)
 	}
 }

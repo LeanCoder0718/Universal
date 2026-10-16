@@ -213,6 +213,38 @@ func WithDebug(debug bool) PoolOption {
 	}
 }
 
+// EnableSessionID habilita o deshabilita la inyección de la cabecera x-session-id en las peticiones.
+// Si se llama sin argumentos (Workers.EnableSessionID()), la activa (true).
+// También permite especificar un valor booleano explícito: Workers.EnableSessionID(false).
+func EnableSessionID(enabled ...bool) PoolOption {
+	val := true
+	if len(enabled) > 0 {
+		val = enabled[0]
+	}
+	return func(cfg *HTTPClient.Config) {
+		cfg.Browser.EnableSessionID = val
+	}
+}
+
+// EneableSessionID es un alias de conveniencia para EnableSessionID.
+func EneableSessionID(enabled ...bool) PoolOption {
+	return EnableSessionID(enabled...)
+}
+
+// DisableSessionID deshabilita la inyección de la cabecera x-session-id (comportamiento seguro por defecto).
+func DisableSessionID() PoolOption {
+	return func(cfg *HTTPClient.Config) {
+		cfg.Browser.EnableSessionID = false
+	}
+}
+
+// WithSessionID configura explícitamente si se debe inyectar la cabecera x-session-id en las peticiones.
+func WithSessionID(enabled bool) PoolOption {
+	return func(cfg *HTTPClient.Config) {
+		cfg.Browser.EnableSessionID = enabled
+	}
+}
+
 // QuickStart crea un pool HTTP listo para producción auto-calibrado automáticamente según poolSize.
 func QuickStart(poolSize int, proxies []string, proxyType string, maxRetries int, poolOpts ...PoolOption) (*Pool, error) {
 	cfg := HTTPClient.Default()
