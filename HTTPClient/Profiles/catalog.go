@@ -385,7 +385,6 @@ func registerAndroidOkHTTP(r *Registry) {
 		{"4.13", profiles.Okhttp4Android13},
 		{"4.12", profiles.Okhttp4Android12},
 		{"4.11", profiles.Okhttp4Android11},
-		{"4.10", profiles.Okhttp4Android10},
 		{"4.9", profiles.Okhttp4Android9},
 	}
 

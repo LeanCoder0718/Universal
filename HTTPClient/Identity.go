@@ -286,10 +286,12 @@ func IdentityFromSpec(spec *Profiles.ProfileSpec) (Identity, error) {
 	}
 
 	browserName := spec.ClientType().String()
-	if browser == BrowserChrome {
-		browserName = "chrome"
-	} else {
-		browserName = "firefox"
+	if browserName == "" || browserName == "Unknown" {
+		if browser == BrowserChrome {
+			browserName = "chrome"
+		} else {
+			browserName = "firefox"
+		}
 	}
 
 	id := Identity{

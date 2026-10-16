@@ -29,6 +29,7 @@ type Spec struct {
 	Body         []byte
 	ContentType  string
 	Extra        map[string]string // headers puntuales (Authorization, etc.)
+	HeaderOrder  []string          // Si se define, fuerza el orden wire exacto de las cabeceras (fhttp.HeaderOrderKey)
 	CookieFilter []string          // Si no está vacío, el Session filtrará el Jar para enviar SOLO estas cookies en este request.
 	Idempotent   bool
 
@@ -171,6 +172,16 @@ func (b *Builder) Build(spec Spec, cookieHeader string) (*fhttp.Request, error) 
 			}
 			req.Header[HeaderOrderKey] = cleanOrder
 		}
+	}
+	if len(spec.HeaderOrder) > 0 {
+		customOrder := make([]string, 0, len(spec.HeaderOrder))
+		for _, h := range spec.HeaderOrder {
+			cleaned := strings.ToLower(strings.TrimSpace(h))
+			if cleaned != "" && !strings.EqualFold(cleaned, "host") {
+				customOrder = append(customOrder, cleaned)
+			}
+		}
+		req.Header[HeaderOrderKey] = customOrder
 	}
 	if spec.ContentType != "" {
 		hasCT := false
