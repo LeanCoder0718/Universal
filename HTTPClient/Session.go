@@ -950,6 +950,23 @@ func (s *Session) CurrentProxy() *Entry {
 	return &cp
 }
 
+// CurrentProxyString devuelve el string representativo del proxy actual asignado a la sesión.
+func (s *Session) CurrentProxyString() string {
+	if s == nil {
+		return ""
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.currentProxy == nil {
+		return ""
+	}
+	proxyType := TypeHTTP
+	if s.proxyPool != nil {
+		proxyType = s.proxyPool.Type()
+	}
+	return s.currentProxy.String(proxyType)
+}
+
 // ProxyPool retorna el pool de proxies asociado a la sesión, si existe.
 func (s *Session) ProxyPool() *Pool {
 	return s.proxyPool

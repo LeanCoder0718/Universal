@@ -161,6 +161,16 @@ func WithHTTPConfig(httpCfg HTTPClient.HTTPConfig) PoolOption {
 	}
 }
 
+// WithEphemeralSessions fuerza la creación de una nueva sesión HTTP limpia por cada combo
+// y la destruye/cierra inmediatamente al finalizar el procesamiento (sin reutilización entre combos).
+func WithEphemeralSessions() PoolOption {
+	return func(cfg *HTTPClient.Config) {
+		cfg.Lifecycle.MaxRequestsPerSession = 1
+		cfg.Lifecycle.AutoResetOnRelease = false
+		cfg.Lifecycle.EnablePreWarm = false
+	}
+}
+
 // WithAutoReset activa la limpieza automática de cookies al terminar cada combo
 // y permite elegir si se rota la huella/dispositivo (rotateIdentity = true/false)
 // manteniendo el socket TCP/TLS caliente con el proxy.
