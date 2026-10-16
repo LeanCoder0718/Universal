@@ -104,6 +104,15 @@ func (b *Builder) Build(spec Spec, cookieHeader string) (*fhttp.Request, error) 
 		}
 	}
 
+	isOkHttp := strings.Contains(strings.ToLower(ua), "okhttp")
+	acceptLang := b.id.AcceptLanguage
+	if isOkHttp {
+		secUA = ""
+		secMobile = ""
+		secPlatform = ""
+		acceptLang = ""
+	}
+
 	ctx := Context{
 		Method:          spec.Method,
 		Authority:       u.Host,
@@ -113,7 +122,7 @@ func (b *Builder) Build(spec Spec, cookieHeader string) (*fhttp.Request, error) 
 		SecChUA:         secUA,
 		SecChUAMobile:   secMobile,
 		SecChUAPlatform: secPlatform,
-		AcceptLanguage:  b.id.AcceptLanguage,
+		AcceptLanguage:  acceptLang,
 		ContentType:     spec.ContentType,
 		AcceptEncoding:  "gzip, deflate, br, zstd",
 		Cookie:          cookieHeader,
@@ -130,6 +139,37 @@ func (b *Builder) Build(spec Spec, cookieHeader string) (*fhttp.Request, error) 
 				delete(req.Header, "Host")
 				delete(req.Header, "host")
 			}
+		}
+	}
+
+	if isOkHttp {
+		// Native OkHttp nunca envía cabeceras W3C Sec-Fetch-* ni Client Hints de navegador
+		browserHeaders := []string{
+			"sec-fetch-dest", "sec-fetch-mode", "sec-fetch-site", "sec-fetch-user",
+			"sec-ch-ua", "sec-ch-ua-mobile", "sec-ch-ua-platform",
+		}
+		for _, bh := range browserHeaders {
+			for k := range req.Header {
+				if strings.EqualFold(k, bh) {
+					delete(req.Header, k)
+				}
+			}
+		}
+		if order, ok := req.Header[HeaderOrderKey]; ok {
+			cleanOrder := make([]string, 0, len(order))
+			for _, ord := range order {
+				shouldKeep := true
+				for _, bh := range browserHeaders {
+					if strings.EqualFold(ord, bh) {
+						shouldKeep = false
+						break
+					}
+				}
+				if shouldKeep {
+					cleanOrder = append(cleanOrder, ord)
+				}
+			}
+			req.Header[HeaderOrderKey] = cleanOrder
 		}
 	}
 	if spec.ContentType != "" {

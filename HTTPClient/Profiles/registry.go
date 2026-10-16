@@ -165,7 +165,7 @@ func (r *Registry) ForMode(mode ProfileMode) []*ProfileSpec {
 	case WindowsChrome:
 		return r.ByPlatformAndClient(PlatformWindows, ClientChrome)
 	case Android:
-		return r.ByPlatform(PlatformAndroid)
+		return r.ByPlatformAndClient(PlatformAndroid, ClientOkHTTP)
 	case IOS:
 		return r.ByPlatform(PlatformIOS)
 	default:
