@@ -1,4 +1,4 @@
-// Package HTTPClient — gestión de gateways de proxy SIN circuit breaker.
+﻿// Package HTTPClient — gestión de gateways de proxy SIN circuit breaker.
 //
 // Caso de uso objetivo: 1 (o pocos) endpoints residenciales rotativos
 // compartidos por cientos de goroutines. Un timeout en la goroutine B
@@ -22,6 +22,34 @@ import (
 
 	"github.com/google/uuid"
 )
+
+// FormatProxyUserWithSession reemplaza o agrega el sufijo -session-<sessionID> al usuario del proxy.
+func FormatProxyUserWithSession(user, sessionID string) string {
+	if user == "" || sessionID == "" {
+		return user
+	}
+	cleanUser := user
+	if idx := strings.Index(cleanUser, "-session-"); idx != -1 {
+		rest := cleanUser[idx+len("-session-"):]
+		endIdx := strings.IndexAny(rest, "-_:@")
+		if endIdx == -1 {
+			cleanUser = cleanUser[:idx]
+		} else {
+			cleanUser = cleanUser[:idx] + rest[endIdx:]
+		}
+	}
+	if idx := strings.Index(cleanUser, "__sessid."); idx != -1 {
+		rest := cleanUser[idx+len("__sessid."):]
+		endIdx := strings.IndexAny(rest, "-_:@")
+		if endIdx == -1 {
+			cleanUser = cleanUser[:idx]
+		} else {
+			cleanUser = cleanUser[:idx] + rest[endIdx:]
+		}
+	}
+	cleanUser = strings.TrimRight(cleanUser, "-_")
+	return fmt.Sprintf("%s-session-%s", cleanUser, sessionID)
+}
 
 type Type string
 
@@ -427,3 +455,5 @@ func (p *Pool) SetGeoCountry(countryCode string) bool {
 	}
 	return anyChanged
 }
+
+

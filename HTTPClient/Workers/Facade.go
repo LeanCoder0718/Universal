@@ -1,12 +1,13 @@
-package Workers
+﻿package Workers
 
 import (
-	"github.com/LeanCoder0718/Universal/HTTPClient"
-	"github.com/LeanCoder0718/Universal/HTTPClient/Profiles"
 	"fmt"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/LeanCoder0718/Universal/HTTPClient"
+	"github.com/LeanCoder0718/Universal/HTTPClient/Profiles"
 )
 
 // AutoTuneConfig calibra e inspecciona el entorno del sistema (cores CPU, RDP/VPS)
@@ -181,6 +182,14 @@ func WithAutoReset(rotateIdentity bool) PoolOption {
 	}
 }
 
+// WithStickyProxySessions activa el modo sticky con rotación de -session-<uuid> por tarea.
+func WithStickyProxySessions() PoolOption {
+	return func(cfg *HTTPClient.Config) {
+		cfg.Proxy.Mode = HTTPClient.ModeSticky
+		cfg.Proxy.Sticky = true
+	}
+}
+
 // WithSessionLifecycle configura los límites de peticiones y tiempo de vida de sesiones.
 func WithSessionLifecycle(maxReqs uint64, maxAge time.Duration, preWarm bool) PoolOption {
 	return func(cfg *HTTPClient.Config) {
@@ -332,10 +341,6 @@ func QuickStartWithProfile(poolSize int, proxies []string, proxyType string, max
 	AutoTuneConfig(cfg, poolSize)
 	cfg.Debug = false
 
-	for _, opt := range poolOpts {
-		opt(cfg)
-	}
-
 	if maxRetries <= 0 {
 		maxRetries = 1
 	}
@@ -344,11 +349,16 @@ func QuickStartWithProfile(poolSize int, proxies []string, proxyType string, max
 	cfg.Retry.WaitMax = 1 * time.Second
 	cfg.Retry.JitterFactor = 0.3
 
-	// Proxies
+	// Proxies defaults
 	cfg.Proxy.Enabled = len(proxies) > 0
 	cfg.Proxy.ProxyType = proxyType
 	cfg.Proxy.Mode = HTTPClient.ModeRotating
 	cfg.Proxy.Sticky = false
+
+	// Aplicar poolOpts para que puedan personalizar Proxy, Lifecycle y Timeouts
+	for _, opt := range poolOpts {
+		opt(cfg)
+	}
 
 	var opts []HTTPClient.Option
 	if len(proxies) > 0 {
@@ -422,3 +432,5 @@ func QuickStartWithHTTPConfig(poolSize int, proxies []string, proxyType string, 
 
 	return New(cfg, PoolOptions{MaxInFlight: poolSize * 4}, opts...)
 }
+
+

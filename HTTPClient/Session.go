@@ -1,4 +1,4 @@
-// Package browser contiene el núcleo absoluto de la librería: Session.
+﻿// Package browser contiene el núcleo absoluto de la librería: Session.
 package HTTPClient
 
 import (
@@ -288,14 +288,8 @@ func (s *Session) buildClient() error {
 		if err != nil {
 			return fmt.Errorf("browser: resolviendo proxy: %w", err)
 		}
-		if s.proxyPool.Mode() == ModeSticky && s.stickyID != "" && resolved.User != "" {
-			if !strings.Contains(resolved.User, "__sessid.") && !strings.Contains(resolved.User, "_session-") {
-				shortID := s.stickyID
-				if len(shortID) > 8 {
-					shortID = shortID[:8]
-				}
-				resolved.User = fmt.Sprintf("%s__sessid.%s", resolved.User, shortID)
-			}
+		if (s.proxyPool.Mode() == ModeSticky || s.cfg.Proxy.Sticky) && s.stickyID != "" && resolved.User != "" {
+			resolved.User = FormatProxyUserWithSession(resolved.User, s.stickyID)
 		}
 		entry = &resolved
 	}
@@ -603,17 +597,20 @@ func (s *Session) SetExplicitProxy(e Entry) error {
 }
 
 func (s *Session) setExplicitProxyLocked(e Entry) error {
+	entry := e
+	if (s.proxyPool != nil && (s.proxyPool.Mode() == ModeSticky || s.cfg.Proxy.Sticky)) && s.stickyID != "" && entry.User != "" {
+		entry.User = FormatProxyUserWithSession(entry.User, s.stickyID)
+	}
+
 	// Si el proxy es exactamente idéntico al actual y el cliente ya existe,
 	// PRESERVAR el pool de conexiones TCP Keep-Alive y sesiones TLS sin destruirlo.
 	if s.client != nil && s.currentProxy != nil &&
-		s.currentProxy.Host == e.Host &&
-		s.currentProxy.Port == e.Port &&
-		s.currentProxy.User == e.User &&
-		s.currentProxy.Pass == e.Pass {
+		s.currentProxy.Host == entry.Host &&
+		s.currentProxy.Port == entry.Port &&
+		s.currentProxy.User == entry.User &&
+		s.currentProxy.Pass == entry.Pass {
 		return nil
 	}
-
-	entry := e
 	client, err := s.getOrCreateClientLocked(&entry, s.cfg.Browser.FollowRedirects)
 	if err != nil {
 		return fmt.Errorf("browser: reconfigurando proxy explícito: %w", err)
@@ -1039,6 +1036,11 @@ func (s *Session) ResetComboState(rotateIdentity bool) error {
 			_ = s.buildClient()
 		}
 	}
+
+	if s.proxyPool != nil && (s.proxyPool.Mode() == ModeSticky || s.cfg.Proxy.Sticky) {
+		return s.buildClient()
+	}
+
 	return nil
 }
 
@@ -1281,3 +1283,5 @@ func (s *Session) debugLog(spec Spec, result *Result) {
 	color.New(color.FgHiBlack).Println("────────────────────────────────────────────────────────────────")
 	fmt.Println()
 }
+
+
