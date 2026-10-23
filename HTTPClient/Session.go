@@ -354,6 +354,7 @@ func (s *Session) rotateProxyLocked(clearCookies bool) error {
 	if clearCookies && s.jar != nil {
 		s.jar.Reset()
 	}
+	s.stickyID = NewStickyID()
 	if s.proxyPool != nil {
 		var excluded []string
 		if s.currentProxy != nil {
@@ -385,7 +386,9 @@ func (s *Session) applyAction(gen uint64, action retry.Action, class retry.Error
 		return nil
 	}
 	switch action {
-	case retry.ActionReconnect, retry.ActionRotateProxy:
+	case retry.ActionRotateProxy:
+		return s.rotateProxyLocked(false)
+	case retry.ActionReconnect:
 		return s.reconnectLocked()
 	case retry.ActionRebuildIdentity:
 		return s.refreshLocked()

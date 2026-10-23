@@ -79,6 +79,7 @@ func NewDefaultClassifier() *DefaultClassifier {
 			`code":"throttled`, "Access Denied", "pardon the interruption",
 			"Enable JavaScript", "challenge-platform", "Just a moment",
 			"Attention Required", "_cf_chl", "Incapsula incident",
+			"COUNTRY_BLOCKED", "country blocked",
 		},
 		NetworkStatusSet: map[int]bool{500: true, 502: true, 504: true},
 	}
@@ -120,11 +121,15 @@ func (d *DefaultClassifier) Classify(s Signal) ErrorClass {
 		return ClassRateLimited
 	case s.StatusCode == 503:
 		return ClassServerOverloaded
+	case s.StatusCode == 451:
+		return ClassBlocked
 	case s.StatusCode == 403:
 		if containsAny(s.BodySample, d.WAFKeywords) {
 			return ClassBlocked
 		}
 		return ClassBusinessLogic
+	case containsAny(s.BodySample, []string{"COUNTRY_BLOCKED", "country blocked"}):
+		return ClassBlocked
 	case d.NetworkStatusSet[s.StatusCode]:
 		return ClassTransientNetwork
 	case s.StatusCode == 401, s.StatusCode == 400, s.StatusCode == 404:
@@ -187,7 +192,8 @@ func (e *Engine) Decide(attempt int, s Signal) Decision {
 	}
 
 	// No reintentar métodos no idempotentes salvo autorización explícita.
-	if !s.Idempotent && !isIdempotentMethod(s.Method) {
+	// No reintentar métodos no idempotentes salvo autorización explícita o bloqueo a nivel WAF/Geo (ClassBlocked)
+	if !s.Idempotent && !isIdempotentMethod(s.Method) && class != ClassBlocked {
 		// Excepción controlada: TLS fingerprint sí puede reconstruir identidad
 		// solo si el caller marcó Idempotent o es safe method.
 		return Decision{
@@ -216,7 +222,9 @@ func actionFor(class ErrorClass) Action {
 	switch class {
 	case ClassTLSFingerprint:
 		return ActionRebuildIdentity
-	case ClassBlocked, ClassTransientNetwork:
+	case ClassBlocked:
+		return ActionRotateProxy
+	case ClassTransientNetwork:
 		return ActionReconnect
 	case ClassRateLimited, ClassServerOverloaded:
 		return ActionWaitSameConn
