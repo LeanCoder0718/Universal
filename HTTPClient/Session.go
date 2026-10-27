@@ -651,9 +651,13 @@ func (s *Session) Do(ctx context.Context, spec Spec) (*Result, error) {
 		return nil, err
 	}
 
-	if spec.Country != "" {
-		if err := s.SetGeoCountry(spec.Country); err != nil {
-			return nil, fmt.Errorf("browser: adaptando proxy para país %s: %w", spec.Country, err)
+	targetCountry := spec.Country
+	if targetCountry == "" {
+		targetCountry = GeoRoute.CountryFromContext(ctx)
+	}
+	if targetCountry != "" {
+		if err := s.SetGeoCountry(targetCountry); err != nil {
+			return nil, fmt.Errorf("browser: adaptando proxy para país %s: %w", targetCountry, err)
 		}
 	}
 
@@ -1292,6 +1296,16 @@ func (s *Session) debugLog(spec Spec, result *Result) {
 	fmt.Println()
 	color.New(color.FgHiBlack).Println("────────────────────────────────────────────────────────────────")
 	fmt.Println()
+}
+
+// WithCountry inyecta un código de país en el contexto para auto-enrutamiento regional en Session.Do.
+func WithCountry(ctx context.Context, country string) context.Context {
+	return GeoRoute.WithCountry(ctx, country)
+}
+
+// CountryFromContext extrae el código de país presente en el contexto si existe.
+func CountryFromContext(ctx context.Context) string {
+	return GeoRoute.CountryFromContext(ctx)
 }
 
 

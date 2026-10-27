@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/LeanCoder0718/Universal/GeoRoute"
 )
 
 // TestPauseAndResume prueba la capacidad de pausar y continuar el pipeline en caliente
@@ -551,6 +553,21 @@ func TestProgress_GeoRouteCountryGroupingAndOrder(t *testing.T) {
 	// La última debe ser XX (genérico)
 	if receivedCountries[10] != "XX" {
 		t.Errorf("pos 10: country = %s, want XX", receivedCountries[10])
+	}
+}
+
+// TestLineContextAutoDetection valida que line.Context() transporte el país en el context.Context
+func TestLineContextAutoDetection(t *testing.T) {
+	lineES := Line{Content: []byte("user@domain.es:pass"), Country: "ES"}
+	ctxES := lineES.Context()
+	if GeoRoute.CountryFromContext(ctxES) != "ES" {
+		t.Errorf("expected ES, got %s", GeoRoute.CountryFromContext(ctxES))
+	}
+
+	lineUndetected := Line{Content: []byte("user@domain.pe:pass")} // Sin country explícito -> auto-detecta del content
+	ctxPE := lineUndetected.Context()
+	if GeoRoute.CountryFromContext(ctxPE) != "PE" {
+		t.Errorf("expected PE, got %s", GeoRoute.CountryFromContext(ctxPE))
 	}
 }
 

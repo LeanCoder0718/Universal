@@ -104,3 +104,47 @@ func TestSession_DoWithSpecCountry(t *testing.T) {
 		t.Errorf("ProxyDisplay = %q, want clean base user 'user1' after XX", displayXX)
 	}
 }
+
+// TestSession_DoWithContextCountry valida la Opción B: que session.Do extraiga el país automáticamente del context.Context
+func TestSession_DoWithContextCountry(t *testing.T) {
+	pool := newTestProxyPool(t, 1)
+	cfg := Default()
+	sess, err := NewSession(cfg,
+		WithProxyPool(pool),
+		WithTransportFactory(&testLoopbackFactory{}),
+	)
+	if err != nil {
+		t.Fatalf("error creando sesión: %v", err)
+	}
+	defer sess.Close()
+
+	// 1. Petición con WithCountry(ctx, "ES") y Spec SIN campo Country
+	ctxES := WithCountry(context.Background(), "ES")
+	specPlain := Spec{
+		Method: "GET",
+		URL:    "http://example.com/check",
+	}
+	res1, err := sess.Do(ctxES, specPlain)
+	if err != nil {
+		t.Fatalf("Do(ctxES) error: %v", err)
+	}
+	res1.Release()
+
+	displayES := sess.ProxyDisplay()
+	if !strings.Contains(strings.ToLower(displayES), "es") {
+		t.Errorf("ProxyDisplay = %q, want country tag ES from context", displayES)
+	}
+
+	// 2. Siguiente petición con WithCountry(ctx, "XX") y Spec SIN campo Country
+	ctxXX := WithCountry(context.Background(), "XX")
+	res2, err := sess.Do(ctxXX, specPlain)
+	if err != nil {
+		t.Fatalf("Do(ctxXX) error: %v", err)
+	}
+	res2.Release()
+
+	displayXX := sess.ProxyDisplay()
+	if displayXX != "user1" {
+		t.Errorf("ProxyDisplay = %q, want clean base user 'user1' from context XX", displayXX)
+	}
+}
