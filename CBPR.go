@@ -35,28 +35,7 @@ var (
 	WhiteColor = Utils.WhiteColor
 	LimeGreen  = Utils.LimeGreen
 	Cyan       = Utils.Cyan
-
-	Titulo      = "[RABBIT]"
-	LogoHandler func(title string)
-	Modulo      = ""
 )
-
-func Logo(Titulo string) {
-	ClearConsole()
-	//SetConsoleSize(135, 35)
-	ConsoleTitle(Titulo)
-	fmt.Println()
-	fmt.Println(ColorLogo("                                            ╔═══╗╔═══╗╔══╗ ╔══╗ ╔══╗╔════╗"))
-	fmt.Println(OrangeCo("                                            ║╔═╗║║╔═╗║║╔╗║ ║╔╗║ ╚╣╠╝║╔╗╔╗║"))
-	fmt.Println(ColorLogo("                                            ║╚═╝║║║ ║║║╚╝╚╗║╚╝╚╗ ║║ ╚╝║║╚╝"))
-	fmt.Println(OrangeCo("                                            ║╔╗╔╝║╚═╝║║╔═╗║║╔═╗║ ║║   ║║  "))
-	fmt.Println(ColorLogo("                                            ║║║╚╗║╔═╗║║╚═╝║║╚═╝║╔╣╠╗ ╔╝╚╗ "))
-	fmt.Println(OrangeCo("                                            ╚╝╚═╝╚╝ ╚╝╚═══╝╚═══╝╚══╝ ╚══╝ "))
-	fmt.Println()
-	fmt.Println(ColorLogo(" → Encuentrame: https://t.me/RabbitCoder"))
-	fmt.Println(ColorLogo("════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════"))
-	fmt.Println()
-}
 
 
 func findRemainingComboFiles() []string {
@@ -88,7 +67,6 @@ func findRemainingComboFiles() []string {
 }
 
 func OpenCombo() (string, int64, error) {
-	Logo(Titulo + " [Modulo: " + Modulo + "]")
 
 	remainingFiles := findRemainingComboFiles()
 	var filePath string
@@ -394,7 +372,6 @@ func ExtractUniqueDomains(lines []string) []string {
 func OpenProxy(proxyType string) ([]string, error) {
 
 	if proxyType != "off" {
-		Logo(Titulo + " [Modulo: " + Modulo + "]")
 		fmt.Print(Red(" → "), WhiteColor("Proxy Archivo seleccionado: "))
 		// Bucle que se repetirá hasta que se seleccione un archivo
 		var proxyList []string
@@ -523,7 +500,6 @@ func OpenProxy(proxyType string) ([]string, error) {
 // FUNCIONES EXTRAS
 
 func UIStart() (string, int64, []string, int, string) {
-	Logo(Titulo + " [Modulo: " + Modulo + "]")
 	Threader := Utils.ReadInt(fmt.Sprintf("%s %s", Red(" →"), "¿Cuantos Hilos o Taks?: "), 1)
 
 	proxyType := SelectProxy()
@@ -542,7 +518,6 @@ func UIStart() (string, int64, []string, int, string) {
 
 // UIStartSlice inicia la interfaz seleccionando proxies y cargando el combo completo como slice []string en memoria.
 func UIStartSlice() ([]string, []string, int, string) {
-	Logo(Titulo + " [Modulo: " + Modulo + "]")
 	Threader := Utils.ReadInt(fmt.Sprintf("%s %s", Red(" →"), "¿Cuantos Hilos o Taks?: "), 1)
 
 	proxyType := SelectProxy()
@@ -562,7 +537,6 @@ func UIStartSlice() ([]string, []string, int, string) {
 
 // OpenComboSlice abre el diálogo de combos y carga el archivo completo en memoria como []string.
 func OpenComboSlice() ([]string, error) {
-	Logo(Titulo + " [Modulo: " + Modulo + "]")
 
 	remainingFiles := findRemainingComboFiles()
 	var filePath string
@@ -792,7 +766,6 @@ func LoadComboSliceFromFile(filePath string) ([]string, error) {
 }
 
 func SelectProxy() string {
-	Logo(Titulo + " [Modulo: " + Modulo + "]")
 	fmt.Println(Red(" →"), "¿Deseas usar proxy?")
 	fmt.Println()
 	fmt.Print(" [", Red("1"), "]", " HTTP\n")

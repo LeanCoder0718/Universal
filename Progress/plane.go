@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 // Plane administra las señales de control global (P/C/G) y sincroniza la pausa de los workers.
@@ -57,6 +58,10 @@ func (p *Plane) Save(
 		p.Pause()
 		defer p.Resume()
 	}
+
+	// Pequeña espera de reposo (quiescence) para permitir que los workers
+	// que estén procesando una línea terminen y queden en pausa.
+	time.Sleep(50 * time.Millisecond)
 
 	return p.checkpoint.SavePendingSnapshot(sourceFilePath, outputPath, chunkQueue, drainRetryQueue)
 }

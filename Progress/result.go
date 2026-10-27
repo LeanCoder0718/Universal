@@ -62,12 +62,22 @@ func (s *WriterSink) Run(ctx context.Context, resultQueue <-chan *ChunkResult) (
 			}
 			if res != nil {
 				stats.TotalChunks++
-				stats.TotalLines += uint64(len(res.Results))
+				isRetry := (res.SequenceID == 0)
+
+				if !isRetry {
+					stats.TotalLines += uint64(len(res.Results))
+				}
+
 				for _, lr := range res.Results {
 					if lr.Success {
 						stats.SuccessLines++
+						if isRetry && stats.FailedLines > 0 {
+							stats.FailedLines--
+						}
 					} else {
-						stats.FailedLines++
+						if !isRetry {
+							stats.FailedLines++
+						}
 						if s.collector != nil {
 							s.collector(lr.Line, lr.Err)
 						}

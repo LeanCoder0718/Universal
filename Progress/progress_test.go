@@ -356,3 +356,125 @@ func TestPipelineMultiPassMaxRetriesExceeded(t *testing.T) {
 		t.Errorf("transitions = %d, want 2", transitions.Load())
 	}
 }
+
+// TestProcessFacadeWithSlice valida la API de alto nivel Process con un slice []string sin configuración manual.
+func TestProcessFacadeWithSlice(t *testing.T) {
+	lines := []string{"combo1@test.com:pass1", "combo2@test.com:pass2", "combo3@test.com:pass3"}
+	var processed atomic.Uint64
+
+	processFn := func(line *Line) ([]byte, error) {
+		processed.Add(1)
+		return []byte("success"), nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	stats, err := Process(ctx, lines, processFn,
+		WithWorkers(3),
+		WithAutoTune(false),
+		WithKeyboard(false),
+		WithMaxRetries(0),
+	)
+	if err != nil {
+		t.Fatalf("Process falló: %v", err)
+	}
+
+	if stats.TotalLines != 3 {
+		t.Errorf("TotalLines = %d, want 3", stats.TotalLines)
+	}
+	if stats.SuccessLines != 3 {
+		t.Errorf("SuccessLines = %d, want 3", stats.SuccessLines)
+	}
+	if processed.Load() != 3 {
+		t.Errorf("processed count = %d, want 3", processed.Load())
+	}
+}
+
+// TestProcessFacadeWithFile valida la API de alto nivel Process con un archivo temporal en streaming.
+func TestProcessFacadeWithFile(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "facade_test_*.txt")
+	if err != nil {
+		t.Fatalf("error creando archivo temporal: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	content := "user1:pass1\nuser2:pass2\nuser3:pass3\nuser4:pass4\n"
+	if _, err := tmpFile.WriteString(content); err != nil {
+		t.Fatalf("error escribiendo archivo: %v", err)
+	}
+	tmpFile.Close()
+
+	var count atomic.Uint64
+	fn := func(line *Line) ([]byte, error) {
+		count.Add(1)
+		return []byte("ok"), nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	stats, err := Process(ctx, tmpFile.Name(), fn,
+		WithWorkers(4),
+		WithAutoTune(false),
+		WithKeyboard(false),
+		WithMaxRetries(0),
+	)
+	if err != nil {
+		t.Fatalf("Process con archivo falló: %v", err)
+	}
+
+	if stats.TotalLines != 4 {
+		t.Errorf("TotalLines = %d, want 4", stats.TotalLines)
+	}
+	if stats.SuccessLines != 4 {
+		t.Errorf("SuccessLines = %d, want 4", stats.SuccessLines)
+	}
+	if count.Load() != 4 {
+		t.Errorf("count = %d, want 4", count.Load())
+	}
+}
+
+// TestFineGrainedParallelismNoConvoy verifica que una línea lenta no bloquee a las demás (Fase 2).
+func TestFineGrainedParallelismNoConvoy(t *testing.T) {
+	// 5 líneas en un solo chunk. La línea 0 es lenta (100ms), las otras 4 son instantáneas (1ms).
+	lines := []string{"slow", "fast1", "fast2", "fast3", "fast4"}
+	var fastCompleted atomic.Uint64
+
+	fn := func(line *Line) ([]byte, error) {
+		if string(line.Content) == "slow" {
+			time.Sleep(100 * time.Millisecond)
+		} else {
+			fastCompleted.Add(1)
+		}
+		return []byte("done"), nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	stats, err := Process(ctx, lines, fn,
+		WithWorkers(5),
+		WithChunkSize(5), // Las 5 líneas en un solo chunk
+		WithAutoTune(false),
+		WithKeyboard(false),
+		WithMaxRetries(0),
+	)
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("Process falló: %v", err)
+	}
+
+	if stats.TotalLines != 5 {
+		t.Errorf("TotalLines = %d, want 5", stats.TotalLines)
+	}
+
+	// Si las líneas se procesan en paralelo real, las 4 rápidas no tuvieron que esperar 100ms cada una secuencialmente.
+	// El tiempo total debe ser cercano a los 100ms de la línea lenta, nunca 400-500ms.
+	if elapsed > 300*time.Millisecond {
+		t.Errorf("Tiempo transcurrido %v demasiado alto, hubo bloqueo secuencial", elapsed)
+	}
+}
+

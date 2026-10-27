@@ -1,6 +1,7 @@
 package progress
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"runtime"
@@ -70,6 +71,23 @@ type WorkerPool struct {
 	resultQueue chan<- *ChunkResult
 	wg          *sync.WaitGroup
 	mu          sync.Mutex
+
+	// Despacho fino elástico por ítems (Fase 2: Paralelismo Real en Go)
+	lineQueue chan lineTask
+	dispDone  chan struct{}
+}
+
+type lineTask struct {
+	ct      *chunkTracker
+	chk     *Chunk
+	line    Line
+	lineIdx int
+}
+
+type chunkTracker struct {
+	chk       *Chunk
+	results   []LineResult
+	remaining atomic.Int32
 }
 
 // --- Cached runtime.ReadMemStats (evita stop-the-world en cada llamada) ---
@@ -202,7 +220,7 @@ func (p *WorkerPool) RemoveWorkers(delta int) int {
 	return int(p.numWorkers.Load())
 }
 
-// Start lanza las W goroutines persistentes ejecutoras e inicia el procesamiento en paralelo de forma progresiva (1 en 1).
+// Start lanza las W goroutines persistentes ejecutoras e inicia el procesamiento en paralelo con despacho fino de alta velocidad.
 // Usa time.NewTimer en lugar de time.After para evitar timer leaks durante el ramp-up.
 func (p *WorkerPool) Start(ctx context.Context, chunkQueue <-chan *Chunk, resultQueue chan<- *ChunkResult, wg *sync.WaitGroup) {
 	p.mu.Lock()
@@ -211,16 +229,88 @@ func (p *WorkerPool) Start(ctx context.Context, chunkQueue <-chan *Chunk, result
 	p.resultQueue = resultQueue
 	p.wg = wg
 	total := int(p.numWorkers.Load())
+
+	lineBufSize := total * 8
+	if lineBufSize < 128 {
+		lineBufSize = 128
+	}
+	if lineBufSize > 8192 {
+		lineBufSize = 8192
+	}
+	p.lineQueue = make(chan lineTask, lineBufSize)
+	p.dispDone = make(chan struct{})
 	p.mu.Unlock()
 
 	delay := p.opts.RampUpDelay
+
+	// Dispatcher elástico: divide los chunks de disco en tareas individuales por línea
+	// permitiendo que CUALQUIER worker libre tome trabajo de inmediato (Zero Convoy Effect).
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer close(p.lineQueue)
+		defer close(p.dispDone)
+
+		for {
+			if p.opts.ControlPlane != nil {
+				if err := p.opts.ControlPlane.WaitIfPaused(ctx); err != nil {
+					return
+				}
+			}
+
+			select {
+			case <-ctx.Done():
+				return
+			case chk, ok := <-chunkQueue:
+				if !ok {
+					return
+				}
+				if chk == nil {
+					continue
+				}
+				nLines := len(chk.Lines)
+				if nLines == 0 {
+					if p.opts.ChunkPool != nil {
+						p.opts.ChunkPool.Put(chk)
+					}
+					continue
+				}
+
+				p.activeChunks.Add(1)
+				ct := &chunkTracker{
+					chk:     chk,
+					results: make([]LineResult, nLines),
+				}
+				ct.remaining.Store(int32(nLines))
+
+				for i, line := range chk.Lines {
+					if p.opts.ControlPlane != nil {
+						if err := p.opts.ControlPlane.WaitIfPaused(ctx); err != nil {
+							return
+						}
+					}
+
+					task := lineTask{
+						ct:      ct,
+						chk:     chk,
+						line:    line,
+						lineIdx: i,
+					}
+					select {
+					case <-ctx.Done():
+						return
+					case p.lineQueue <- task:
+					}
+				}
+			}
+		}
+	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
 		// Timer reutilizable — se crea una sola vez y se reutiliza en cada iteración.
-		// time.After() creaba un timer nuevo por iteración que no se liberaba hasta expirar.
 		var rampTimer *time.Timer
 		if delay > 0 {
 			rampTimer = time.NewTimer(delay)
@@ -253,18 +343,160 @@ func (p *WorkerPool) Start(ctx context.Context, chunkQueue <-chan *Chunk, result
 	}()
 }
 
-func (p *WorkerPool) workerLoop(ctx context.Context, workerID int, chunkQueue <-chan *Chunk, resultQueue chan<- *ChunkResult) {
-	const batchSize = 64
-	localCount := uint64(0)
+// DrainPendingLines extrae y escribe en w cualquier línea encolada que aún no haya sido procesada.
+func (p *WorkerPool) DrainPendingLines(w *bufio.Writer) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
+	if p.lineQueue == nil {
+		return nil
+	}
+
+	for len(p.lineQueue) > 0 {
+		select {
+		case task := <-p.lineQueue:
+			if _, err := w.Write(task.line.Content); err != nil {
+				return err
+			}
+			if _, err := w.WriteString("\n"); err != nil {
+				return err
+			}
+		default:
+			return nil
+		}
+	}
+	return nil
+}
+
+func (p *WorkerPool) workerLoop(ctx context.Context, workerID int, chunkQueue <-chan *Chunk, resultQueue chan<- *ChunkResult) {
 	p.spawnedWorkers.Add(1)
 	defer func() {
 		p.spawnedWorkers.Add(-1)
 		p.finishedWorkers.Add(1)
 	}()
 
+	// Modo Despacho Fino (Paralelismo real a nivel de ítem)
+	if p.lineQueue != nil {
+		for {
+			if p.scaleDown.Load() > 0 {
+				if p.scaleDown.Add(-1) >= 0 {
+					return
+				}
+				p.scaleDown.Add(1)
+			}
+
+			if p.opts.ControlPlane != nil {
+				if err := p.opts.ControlPlane.WaitIfPaused(ctx); err != nil {
+					return
+				}
+			}
+
+			select {
+			case <-ctx.Done():
+				return
+			case task, ok := <-p.lineQueue:
+				if !ok {
+					return
+				}
+
+				if p.opts.ControlPlane != nil {
+					if err := p.opts.ControlPlane.WaitIfPaused(ctx); err != nil {
+						return
+					}
+				}
+
+				if p.opts.RateLimiter != nil {
+					if err := p.opts.RateLimiter.Wait(ctx); err != nil {
+						return
+					}
+				}
+
+				if p.opts.Checkpoint != nil {
+					p.opts.Checkpoint.UpdateWorkerProgress(workerID, task.chk, task.lineIdx)
+				}
+
+				p.busyWorkers.Add(1)
+				startLine := time.Now()
+
+				var out []byte
+				var err error
+				func() {
+					defer func() {
+						if r := recover(); r != nil {
+							err = fmt.Errorf("panic in processFn: %v", r)
+						}
+					}()
+					out, err = p.processFn(&task.line)
+				}()
+
+				p.busyWorkers.Add(-1)
+				elapsed := time.Since(startLine)
+
+				if p.opts.Scheduler != nil {
+					p.opts.Scheduler.RecordLatency(elapsed)
+				}
+				if p.opts.Collector != nil {
+					p.opts.Collector.RecordLatency(elapsed)
+					p.opts.Collector.IncrProcessedLines(1)
+				}
+
+				if err != nil {
+					if p.opts.RetryPool != nil {
+						p.opts.RetryPool.Enqueue(&RetryTask{
+							Line:        task.line,
+							Attempt:     1,
+							MaxAttempts: p.opts.RetryPool.opts.MaxAttempts,
+							LastError:   err,
+						})
+					}
+					task.ct.results[task.lineIdx] = LineResult{
+						LineID:  task.line.ID,
+						Line:    task.line,
+						Success: false,
+						Output:  nil,
+						Err:     err,
+					}
+				} else {
+					task.ct.results[task.lineIdx] = LineResult{
+						LineID:  task.line.ID,
+						Line:    task.line,
+						Success: true,
+						Output:  out,
+						Err:     nil,
+					}
+				}
+
+				if p.opts.Checkpoint != nil {
+					p.opts.Checkpoint.ClearWorkerProgress(workerID)
+				}
+
+				// Cuando todas las líneas del chunk concluyen, emitir el resultado consolidado
+				if task.ct.remaining.Add(-1) == 0 {
+					p.activeChunks.Add(-1)
+					p.processedChunks.Add(1)
+
+					chunkRes := &ChunkResult{
+						SequenceID: task.ct.chk.SequenceID,
+						Results:    task.ct.results,
+					}
+
+					select {
+					case <-ctx.Done():
+					case resultQueue <- chunkRes:
+					}
+
+					if p.opts.ChunkPool != nil {
+						p.opts.ChunkPool.Put(task.ct.chk)
+					}
+				}
+			}
+		}
+	}
+
+	// Fallback heredado (si lineQueue == nil)
+	const batchSize = 64
+	localCount := uint64(0)
 	for {
-		// Chequeo de reducción en caliente: si hay scaleDown pendiente, el worker se retira suavemente
 		if p.scaleDown.Load() > 0 {
 			if p.scaleDown.Add(-1) >= 0 {
 				if localCount > 0 && p.opts.Collector != nil {
@@ -273,6 +505,12 @@ func (p *WorkerPool) workerLoop(ctx context.Context, workerID int, chunkQueue <-
 				return
 			}
 			p.scaleDown.Add(1)
+		}
+
+		if p.opts.ControlPlane != nil {
+			if err := p.opts.ControlPlane.WaitIfPaused(ctx); err != nil {
+				return
+			}
 		}
 
 		select {
@@ -299,11 +537,14 @@ func (p *WorkerPool) workerLoop(ctx context.Context, workerID int, chunkQueue <-
 				Results:    make([]LineResult, 0, len(chk.Lines)),
 			}
 
-			if p.opts.Checkpoint != nil {
-				p.opts.Checkpoint.UpdateWorkerProgress(workerID, chk, 0)
-			}
-
-			for _, line := range chk.Lines {
+			for lineIdx, line := range chk.Lines {
+				if p.opts.ControlPlane != nil {
+					if err := p.opts.ControlPlane.WaitIfPaused(ctx); err != nil {
+						p.busyWorkers.Add(-1)
+						p.activeChunks.Add(-1)
+						return
+					}
+				}
 
 				if p.opts.RateLimiter != nil {
 					if err := p.opts.RateLimiter.Wait(ctx); err != nil {
@@ -314,6 +555,10 @@ func (p *WorkerPool) workerLoop(ctx context.Context, workerID int, chunkQueue <-
 						}
 						return
 					}
+				}
+
+				if p.opts.Checkpoint != nil {
+					p.opts.Checkpoint.UpdateWorkerProgress(workerID, chk, lineIdx)
 				}
 
 				var out []byte

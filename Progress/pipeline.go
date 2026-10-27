@@ -232,6 +232,11 @@ func (p *Pipeline) SavePending(sourceFilePath string, outputPath string) (string
 	}
 
 	drainCombined := func(w *bufio.Writer) error {
+		if dp, ok := p.pool.(interface{ DrainPendingLines(w *bufio.Writer) error }); ok {
+			if err := dp.DrainPendingLines(w); err != nil {
+				return err
+			}
+		}
 		if drainRetry != nil {
 			if err := drainRetry(w); err != nil {
 				return err
@@ -651,7 +656,11 @@ func (p *Pipeline) runPass(ctx context.Context, reader ChunkReader, onLineFail f
 			if res != nil {
 				for _, lr := range res.Results {
 					if !lr.Success && onLineFail != nil {
-						onLineFail(lr.Line, lr.Err)
+						// Si retryPool está activo, este gestiona los reintentos en caliente
+						// evitando duplicar tareas en el spool de Multi-Pass.
+						if p.retryPool == nil {
+							onLineFail(lr.Line, lr.Err)
+						}
 					}
 				}
 			}
