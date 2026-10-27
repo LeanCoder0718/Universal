@@ -617,39 +617,62 @@ func OpenProxy(proxyType string) ([]string, error) {
 
 // FUNCIONES EXTRAS
 
+// PrintStepDelimiter imprime una línea delimitadora visual para separar cada paso de la configuración.
+func PrintStepDelimiter() {
+	fmt.Println()
+	fmt.Println(ColorLogo("────────────────────────────────────────────────────────────────────────────────────────────────────────"))
+	fmt.Println()
+}
+
 func UIStart() (string, int64, []string, int, string) {
+	PrintStepDelimiter()
 	Threader := Utils.ReadInt(fmt.Sprintf("%s %s", Red(" →"), "¿Cuantos Hilos o Taks?: "), 1)
 
+	PrintStepDelimiter()
 	proxyType := SelectProxy()
 
+	PrintStepDelimiter()
 	comboFilePath, totalLines, err := OpenCombo()
 	if err != nil {
 		fmt.Println(err)
+	}
+
+	if proxyType != "off" {
+		PrintStepDelimiter()
 	}
 	ProxyList, err2 := OpenProxy(proxyType)
 	if err2 != nil {
 		fmt.Println(err2)
 	}
 
+	PrintStepDelimiter()
 	return comboFilePath, totalLines, ProxyList, Threader, proxyType
 }
 
 // UIStartSlice inicia la interfaz seleccionando proxies y cargando el combo completo como slice []string en memoria.
 func UIStartSlice() ([]string, []string, int, string) {
+	PrintStepDelimiter()
 	Threader := Utils.ReadInt(fmt.Sprintf("%s %s", Red(" →"), "¿Cuantos Hilos o Taks?: "), 1)
 
+	PrintStepDelimiter()
 	proxyType := SelectProxy()
 	var ComboList []string
 
+	PrintStepDelimiter()
 	ComboList, err := OpenComboSlice()
 	if err != nil {
 		fmt.Println(err)
+	}
+
+	if proxyType != "off" {
+		PrintStepDelimiter()
 	}
 	ProxyList, err2 := OpenProxy(proxyType)
 	if err2 != nil {
 		fmt.Println(err2)
 	}
 
+	PrintStepDelimiter()
 	return ComboList, ProxyList, Threader, proxyType
 }
 
