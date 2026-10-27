@@ -224,8 +224,8 @@ func CleanCountryFromUsername(user string) string {
 // Si el país es vacío, "XX", "GENERIC" o "UNKNOWN", limpia cualquier tag regional previo devolviendo
 // el usuario general por defecto sin extensión regional.
 func ApplyCountryToUsername(user, countryCode string) string {
-	if user == "" {
-		return ""
+	if !ActiveApplyGeo || user == "" {
+		return user
 	}
 	countryCode = strings.TrimSpace(countryCode)
 	if countryCode == "" || strings.EqualFold(countryCode, "XX") || strings.EqualFold(countryCode, "GENERIC") || strings.EqualFold(countryCode, "UNKNOWN") {

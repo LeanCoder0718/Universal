@@ -497,6 +497,9 @@ func (s *Session) ProxyURL() string {
 // Si el proxy soporta country routing (ej: country-XX), reutiliza o arrienda el cliente HTTP con la nueva salida geográfica.
 // Si el país es vacío o genérico ("XX", "GENERIC"), restablece la sesión al proxy general por defecto sin tag regional.
 func (s *Session) SetGeoCountry(countryCode string) error {
+	if !GeoRoute.ActiveApplyGeo {
+		return nil
+	}
 	countryCode = strings.ToUpper(strings.TrimSpace(countryCode))
 	if countryCode == "" || countryCode == "XX" || countryCode == "UNKNOWN" {
 		countryCode = "GENERIC"

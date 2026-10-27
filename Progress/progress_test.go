@@ -571,3 +571,59 @@ func TestLineContextAutoDetection(t *testing.T) {
 	}
 }
 
+// TestProgress_ActiveApplyGeoOption4Disabled valida que cuando GeoRoute.ActiveApplyGeo es false (Opción 4 del menú),
+// Progress desactive automáticamente WithGeoSorting y procese los combos en su orden original exacto.
+func TestProgress_ActiveApplyGeoOption4Disabled(t *testing.T) {
+	orig := GeoRoute.ActiveApplyGeo
+	defer func() { GeoRoute.ActiveApplyGeo = orig }()
+
+	// Simular que el usuario seleccionó la Opción 4 en el menú
+	GeoRoute.ActiveApplyGeo = false
+
+	input := []string{
+		"first@domain.pe:pass",  // 1°
+		"second@domain.es:pass", // 2°
+		"third@domain.us:pass",  // 3°
+	}
+
+	var mu sync.Mutex
+	var receivedCombos []string
+
+	fn := func(line *Line) ([]byte, error) {
+		mu.Lock()
+		receivedCombos = append(receivedCombos, string(line.Content))
+		mu.Unlock()
+		return []byte("ok"), nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Llamar a Process SIN pasar WithGeoSorting (debe auto-calibrarse según GeoRoute.ActiveApplyGeo)
+	_, err := Process(ctx, input, fn,
+		WithWorkers(1),
+		WithChunkSize(1),
+		WithAutoTune(false),
+		WithKeyboard(false),
+		WithMaxRetries(0),
+	)
+	if err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	if len(receivedCombos) != 3 {
+		t.Fatalf("receivedCombos count = %d, want 3", len(receivedCombos))
+	}
+
+	// Como la Opción 4 estaba activa, el orden DEBE ser el original exacto de entrada
+	if receivedCombos[0] != "first@domain.pe:pass" {
+		t.Errorf("pos 0: got %s, want first@domain.pe:pass", receivedCombos[0])
+	}
+	if receivedCombos[1] != "second@domain.es:pass" {
+		t.Errorf("pos 1: got %s, want second@domain.es:pass", receivedCombos[1])
+	}
+	if receivedCombos[2] != "third@domain.us:pass" {
+		t.Errorf("pos 2: got %s, want third@domain.us:pass", receivedCombos[2])
+	}
+}
+

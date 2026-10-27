@@ -141,7 +141,7 @@ func defaultProcessConfig() *processConfig {
 		maxRetries:        1,
 		enableAutoTune:    true,
 		enableKeyboard:    true,
-		enableGeoSorting:  true,
+		enableGeoSorting:  GeoRoute.ActiveApplyGeo,
 		geoSchedulingMode: GeoRoute.ModeLargestFirst,
 		rampUpDelay:       1 * time.Millisecond,
 	}
