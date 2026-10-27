@@ -339,7 +339,7 @@ func QuickStartWithProfile(poolSize int, proxies []string, proxyType string, max
 
 	cfg := HTTPClient.Default()
 	AutoTuneConfig(cfg, poolSize)
-	cfg.Debug = true
+	cfg.Debug = false
 
 	if maxRetries <= 0 {
 		maxRetries = 1

@@ -41,6 +41,10 @@ type chromeRelease struct {
 var chromeReleases = []chromeRelease{
 	{"131", "131.0.0.0", profiles.Chrome_131, `"Not(A:Brand"`},
 	{"133", "133.0.0.0", profiles.Chrome_133, `"Not/A)Brand"`},
+	{"144", "144.0.0.0", profiles.Chrome_144, `"Not(A:Brand"`},
+	{"146", "146.0.0.0", profiles.Chrome_146, `"Not(A:Brand"`},
+	{"150", "150.0.0.0", profiles.Chrome_150, `"Not(A:Brand"`},
+	{"152", "152.0.0.0", profiles.Chrome_152, `"Not(A:Brand"`},
 }
 
 type firefoxRelease struct {
@@ -53,6 +57,8 @@ var firefoxReleases = []firefoxRelease{
 	{"132", "132.0", profiles.Firefox_132},
 	{"133", "133.0", profiles.Firefox_133},
 	{"135", "135.0", profiles.Firefox_135},
+	{"147", "147.0", profiles.Firefox_147},
+	{"148", "148.0", profiles.Firefox_148},
 }
 
 type platformInfo struct {

@@ -108,6 +108,8 @@ func registerWindowsFirefox(r *Registry) {
 		{"132", "132.0", profiles.Firefox_132},
 		{"133", "133.0", profiles.Firefox_133},
 		{"135", "135.0", profiles.Firefox_135},
+		{"147", "147.0", profiles.Firefox_147},
+		{"148", "148.0", profiles.Firefox_148},
 	}
 
 	for _, f := range ffSpecs {
@@ -314,6 +316,8 @@ func registerLinuxFirefox(r *Registry) {
 		profile profiles.ClientProfile
 	}{
 		{"135", "135.0", profiles.Firefox_135},
+		{"147", "147.0", profiles.Firefox_147},
+		{"148", "148.0", profiles.Firefox_148},
 	}
 
 	for _, f := range linuxFFSpecs {
