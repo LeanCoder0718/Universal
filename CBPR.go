@@ -5,9 +5,11 @@ import (
 	"github.com/LeanCoder0718/Universal/Utils"
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -66,7 +68,123 @@ func findRemainingComboFiles() []string {
 	return files
 }
 
+var updateLeanCoderOnce sync.Once
+
+// UpdateLeanCoderProjects comprueba y actualiza automáticamente los repositorios Git
+// de LeanCoder (github.com/LeanCoder0718) antes de iniciar el programa.
+// Se ejecuta una única vez por sesión y no detiene el programa si no hay conexión o git.
+func UpdateLeanCoderProjects() {
+	updateLeanCoderOnce.Do(func() {
+		gitPath, err := exec.LookPath("git")
+		if err != nil || gitPath == "" {
+			return
+		}
+
+		var candidateDirs []string
+		seen := make(map[string]bool)
+
+		addCandidate := func(p string) {
+			if p == "" {
+				return
+			}
+			abs, err := filepath.Abs(p)
+			if err != nil {
+				return
+			}
+			abs = filepath.Clean(abs)
+			if seen[abs] {
+				return
+			}
+			seen[abs] = true
+
+			gitTarget := filepath.Join(abs, ".git")
+			if _, err := os.Stat(gitTarget); err == nil {
+				candidateDirs = append(candidateDirs, abs)
+			}
+		}
+
+		// Candidatos en directorio de trabajo y Universal
+		addCandidate(".")
+		addCandidate("Universal")
+		addCandidate(filepath.Join("..", "Universal"))
+
+		if exePath, err := os.Executable(); err == nil {
+			exeDir := filepath.Dir(exePath)
+			addCandidate(exeDir)
+			addCandidate(filepath.Join(exeDir, "Universal"))
+		}
+
+		// Subcarpetas del directorio actual
+		if entries, err := os.ReadDir("."); err == nil {
+			for _, e := range entries {
+				if e.IsDir() && !strings.HasPrefix(e.Name(), ".") {
+					addCandidate(e.Name())
+					addCandidate(filepath.Join(e.Name(), "Universal"))
+				}
+			}
+		}
+
+		// Carpetas hermanas en el directorio padre
+		if entries, err := os.ReadDir(".."); err == nil {
+			for _, e := range entries {
+				if e.IsDir() && !strings.HasPrefix(e.Name(), ".") {
+					addCandidate(filepath.Join("..", e.Name()))
+					addCandidate(filepath.Join("..", e.Name(), "Universal"))
+				}
+			}
+		}
+
+		var reposToUpdate []string
+		for _, dir := range candidateDirs {
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			cmd := exec.CommandContext(ctx, "git", "-C", dir, "remote", "get-url", "origin")
+			out, err := cmd.Output()
+			cancel()
+			if err == nil {
+				remoteURL := strings.ToLower(string(out))
+				if strings.Contains(remoteURL, "leancoder") {
+					reposToUpdate = append(reposToUpdate, dir)
+				}
+			}
+		}
+
+		if len(reposToUpdate) == 0 {
+			return
+		}
+
+		fmt.Println(Red(" → "), WhiteColor("VERIFICANDO ACTUALIZACIONES DE LEANCODER..."))
+		for _, dir := range reposToUpdate {
+			repoName := filepath.Base(dir)
+			if strings.EqualFold(repoName, "Universal") {
+				parent := filepath.Base(filepath.Dir(dir))
+				if parent != "" && parent != "." && parent != "/" && parent != "\\" {
+					repoName = parent + "/" + repoName
+				}
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			cmd := exec.CommandContext(ctx, "git", "-C", dir, "pull", "--ff-only")
+			out, err := cmd.CombinedOutput()
+			cancel()
+
+			if err == nil {
+				outStr := strings.ToLower(string(out))
+				if strings.Contains(outStr, "already up to date") || strings.Contains(outStr, "actualizado") {
+					fmt.Printf("   %s %s: %s\n", LimeGreen("✔"), repoName, WhiteColor("Al día"))
+				} else {
+					fmt.Printf("   %s %s: %s\n", LimeGreen("✔"), repoName, LimeGreen("¡Actualizado con éxito!"))
+				}
+			} else {
+				fmt.Printf("   %s %s: %s\n", OrangeCo("⚠"), repoName, WhiteColor("No se pudo conectar (continuando...)"))
+			}
+		}
+		fmt.Println()
+	})
+}
+
 func OpenCombo() (string, int64, error) {
+
+	UpdateLeanCoderProjects()
 
 	remainingFiles := findRemainingComboFiles()
 	var filePath string
@@ -537,6 +655,8 @@ func UIStartSlice() ([]string, []string, int, string) {
 
 // OpenComboSlice abre el diálogo de combos y carga el archivo completo en memoria como []string.
 func OpenComboSlice() ([]string, error) {
+
+	UpdateLeanCoderProjects()
 
 	remainingFiles := findRemainingComboFiles()
 	var filePath string

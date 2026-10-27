@@ -41,3 +41,10 @@ func TestFastCountLines(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateLeanCoderProjects(t *testing.T) {
+	// Comprobar que no genera panic ni bloquea
+	UpdateLeanCoderProjects()
+	// La segunda llamada no debe hacer nada (sync.Once)
+	UpdateLeanCoderProjects()
+}
