@@ -169,7 +169,9 @@ type countryGroup struct {
 	items []string
 }
 
-func sortCombosByCountry(combos []string, mode GeoRoute.SchedulingMode) ([]string, []string) {
+// SortCombosByCountry agrupa y ordena una lista de combos según su país y el modo indicado.
+// Retorna la lista de combos reordenada y la lista paralela de códigos de país detectados ("ES", "PE", "US", "XX").
+func SortCombosByCountry(combos []string, mode GeoRoute.SchedulingMode) ([]string, []string) {
 	if len(combos) == 0 {
 		return nil, nil
 	}
@@ -341,7 +343,7 @@ func resolveReader(source interface{}, chunkSize int, pool *ChunkPool, enableGeo
 		if enableGeo && fi.Size() < 250*1024*1024 {
 			lines, err := readAllLinesFromFile(s)
 			if err == nil {
-				orderedCombos, orderedCountries := sortCombosByCountry(lines, mode)
+				orderedCombos, orderedCountries := SortCombosByCountry(lines, mode)
 				return NewSliceReaderWithCountries(orderedCombos, orderedCountries, rOpts), int64(len(orderedCombos)), nil
 			}
 		}
@@ -354,7 +356,7 @@ func resolveReader(source interface{}, chunkSize int, pool *ChunkPool, enableGeo
 
 	case []string:
 		if enableGeo {
-			orderedCombos, orderedCountries := sortCombosByCountry(s, mode)
+			orderedCombos, orderedCountries := SortCombosByCountry(s, mode)
 			return NewSliceReaderWithCountries(orderedCombos, orderedCountries, rOpts), int64(len(orderedCombos)), nil
 		}
 		return NewSliceReader(s, rOpts), int64(len(s)), nil
