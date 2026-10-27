@@ -4,6 +4,7 @@ package progress
 type Line struct {
 	ID      uint64      // Identificador secuencial único (1-indexed)
 	Content []byte      // Payload binario/texto de la línea (excluyendo \r y \n)
+	Country string      // Código de país detectado por GeoRoute (ej. "ES", "PE", "US", "XX")
 	State   interface{} // Preserva el estado del procesado para reanudación por etapas en reintentos
 }
 

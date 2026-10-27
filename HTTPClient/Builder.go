@@ -28,6 +28,7 @@ type Spec struct {
 	Kind         RequestKind
 	Body         []byte
 	ContentType  string
+	Country      string            // Opcional: código de país para geo-enrutamiento dinámico en esta petición ("ES", "PE", "XX", etc.)
 	Extra        map[string]string // headers puntuales (Authorization, etc.)
 	HeaderOrder  []string          // Si se define, fuerza el orden wire exacto de las cabeceras (fhttp.HeaderOrderKey)
 	CookieFilter []string          // Si no está vacío, el Session filtrará el Jar para enviar SOLO estas cookies en este request.

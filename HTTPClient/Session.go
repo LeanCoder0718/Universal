@@ -1,4 +1,4 @@
-﻿// Package browser contiene el núcleo absoluto de la librería: Session.
+// Package browser contiene el núcleo absoluto de la librería: Session.
 package HTTPClient
 
 import (
@@ -495,11 +495,12 @@ func (s *Session) ProxyURL() string {
 
 // SetGeoCountry actualiza el proxy de la sesión para enrutar el tráfico a través del país especificado.
 // Si el proxy soporta country routing (ej: country-XX), reutiliza o arrienda el cliente HTTP con la nueva salida geográfica.
+// Si el país es vacío o genérico ("XX", "GENERIC"), restablece la sesión al proxy general por defecto sin tag regional.
 func (s *Session) SetGeoCountry(countryCode string) error {
-	if countryCode == "" {
-		return nil
+	countryCode = strings.ToUpper(strings.TrimSpace(countryCode))
+	if countryCode == "" || countryCode == "XX" || countryCode == "UNKNOWN" {
+		countryCode = "GENERIC"
 	}
-	countryCode = strings.ToLower(strings.TrimSpace(countryCode))
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -648,6 +649,12 @@ func (s *Session) snapshot() (state, uint64, error) {
 func (s *Session) Do(ctx context.Context, spec Spec) (*Result, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
+	}
+
+	if spec.Country != "" {
+		if err := s.SetGeoCountry(spec.Country); err != nil {
+			return nil, fmt.Errorf("browser: adaptando proxy para país %s: %w", spec.Country, err)
+		}
 	}
 
 	maxPerSession := s.cfg.Worker.MaxRequestsPerSession

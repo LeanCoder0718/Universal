@@ -115,3 +115,28 @@ func TestUniversalCountryAdaptation(t *testing.T) {
 		})
 	}
 }
+
+func TestApplyCountryToUsername_RevertToGeneric(t *testing.T) {
+	cases := []struct {
+		inputUser    string
+		countryCode  string
+		expectedUser string
+	}{
+		{"user123__cr.es", "XX", "user123"},
+		{"user123__cr.es", "", "user123"},
+		{"user123__cr.es", "GENERIC", "user123"},
+		{"user123__cr.es", "UNKNOWN", "user123"},
+		{"customer-hl_123-zone-resi-country-us", "XX", "customer-hl_123-zone-resi"},
+		{"user-country-es", "XX", "user"},
+		{"customer-user1-cc-mx", "XX", "customer-user1"},
+		{"clean_user", "XX", "clean_user"},
+		{"clean_user", "", "clean_user"},
+	}
+
+	for _, tc := range cases {
+		got := ApplyCountryToUsername(tc.inputUser, tc.countryCode)
+		if got != tc.expectedUser {
+			t.Errorf("ApplyCountryToUsername(%q, %q) = %q, want %q", tc.inputUser, tc.countryCode, got, tc.expectedUser)
+		}
+	}
+}

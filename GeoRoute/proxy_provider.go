@@ -301,7 +301,7 @@ func (t *TemplateProvider) Transform(proxy ParsedProxy, country CountryCode) (st
 	}
 
 	// 2. Caso: País UNKNOWN o no determinado -> usar PROXY GENERAL (Regla 11)
-	if country == Unknown || country == "" {
+	if country.IsUnknown() || country == "" || country == "XX" || country == "GENERIC" {
 		transformed := proxy
 		transformed.Username = proxy.BaseUsername
 		transformed.Region = ""

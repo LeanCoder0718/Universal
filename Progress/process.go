@@ -1,11 +1,16 @@
 package progress
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
 	"runtime"
+	"sort"
+	"strings"
 	"time"
+
+	"github.com/LeanCoder0718/Universal/GeoRoute"
 )
 
 // ProcessOption define una opción funcional para personalizar la ejecución de Process.
@@ -20,6 +25,8 @@ type processConfig struct {
 	rateLimitBurst    int
 	enableAutoTune    bool
 	enableKeyboard    bool
+	enableGeoSorting  bool
+	geoSchedulingMode GeoRoute.SchedulingMode
 	metricsCounter    MetricsCounterInterface
 	metricsCollector  *Collector
 	tracker           *Tracker
@@ -32,6 +39,18 @@ type processConfig struct {
 	onProgressUpdate  func(stats Stats, lps uint64, workers int)
 	rampUpDelay       time.Duration
 	keyboardCb        KeyboardActionCallback
+}
+
+// WithGeoSorting configura la agrupación y ordenamiento secuencial por país (default true con ModeLargestFirst).
+// Agrupa los combos procesando primero el país de mayor volumen (ej. ES -> PE -> US -> XX) y cambiando
+// el proxy regional dinámicamente o usando el proxy general por defecto al llegar al grupo genérico.
+func WithGeoSorting(enabled bool, mode ...GeoRoute.SchedulingMode) ProcessOption {
+	return func(c *processConfig) {
+		c.enableGeoSorting = enabled
+		if len(mode) > 0 {
+			c.geoSchedulingMode = mode[0]
+		}
+	}
 }
 
 // WithWorkers define manualmente el número de workers (0 = auto-calibrar según carga y CPU).
@@ -116,13 +135,15 @@ func WithRampUpDelay(d time.Duration) ProcessOption {
 
 func defaultProcessConfig() *processConfig {
 	return &processConfig{
-		numWorkers:     0,
-		workload:       WorkloadIO,
-		chunkSize:      500,
-		maxRetries:     1,
-		enableAutoTune:  true,
-		enableKeyboard:  true,
-		rampUpDelay:    1 * time.Millisecond,
+		numWorkers:        0,
+		workload:          WorkloadIO,
+		chunkSize:         500,
+		maxRetries:        1,
+		enableAutoTune:    true,
+		enableKeyboard:    true,
+		enableGeoSorting:  true,
+		geoSchedulingMode: GeoRoute.ModeLargestFirst,
+		rampUpDelay:       1 * time.Millisecond,
 	}
 }
 
@@ -143,8 +164,160 @@ func autoTuneInitialWorkers(workload WorkloadType) int {
 	return 300
 }
 
+type countryGroup struct {
+	cc    GeoRoute.CountryCode
+	items []string
+}
+
+func sortCombosByCountry(combos []string, mode GeoRoute.SchedulingMode) ([]string, []string) {
+	if len(combos) == 0 {
+		return nil, nil
+	}
+	detector := GeoRoute.NewCountryDetector(50000)
+	groupsMap := make(map[GeoRoute.CountryCode][]string, 16)
+
+	for _, line := range combos {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		cc := detector.Detect(trimmed)
+		if cc == "" {
+			cc = GeoRoute.Unknown
+		}
+		groupsMap[cc] = append(groupsMap[cc], trimmed)
+	}
+
+	groups := make([]countryGroup, 0, len(groupsMap))
+	for cc, items := range groupsMap {
+		groups = append(groups, countryGroup{cc: cc, items: items})
+	}
+
+	sort.SliceStable(groups, func(i, j int) bool {
+		isUnkI := groups[i].cc.IsUnknown() || groups[i].cc == "XX"
+		isUnkJ := groups[j].cc.IsUnknown() || groups[j].cc == "XX"
+		if isUnkI != isUnkJ {
+			return !isUnkI
+		}
+		if mode == GeoRoute.ModeSmallestFirst {
+			if len(groups[i].items) != len(groups[j].items) {
+				return len(groups[i].items) < len(groups[j].items)
+			}
+		} else if mode == GeoRoute.ModeAlphabetical {
+			return groups[i].cc < groups[j].cc
+		} else {
+			if len(groups[i].items) != len(groups[j].items) {
+				return len(groups[i].items) > len(groups[j].items)
+			}
+		}
+		return groups[i].cc < groups[j].cc
+	})
+
+	totalCount := 0
+	for _, grp := range groups {
+		totalCount += len(grp.items)
+	}
+
+	orderedCombos := make([]string, 0, totalCount)
+	orderedCountries := make([]string, 0, totalCount)
+
+	for _, grp := range groups {
+		ccStr := string(grp.cc)
+		if grp.cc.IsUnknown() {
+			ccStr = "XX"
+		}
+		for _, item := range grp.items {
+			orderedCombos = append(orderedCombos, item)
+			orderedCountries = append(orderedCountries, ccStr)
+		}
+	}
+
+	return orderedCombos, orderedCountries
+}
+
+func sortLinesByCountry(lines []Line, mode GeoRoute.SchedulingMode) []Line {
+	if len(lines) <= 1 {
+		return lines
+	}
+	detector := GeoRoute.NewCountryDetector(50000)
+	type lineGroup struct {
+		cc    GeoRoute.CountryCode
+		items []Line
+	}
+	groupsMap := make(map[GeoRoute.CountryCode][]Line, 16)
+
+	for _, l := range lines {
+		raw := string(l.Content)
+		var detectedCC GeoRoute.CountryCode
+		if l.Country != "" {
+			detectedCC = GeoRoute.CountryCode(l.Country)
+		} else {
+			detectedCC = detector.Detect(raw)
+			if detectedCC == "" {
+				detectedCC = GeoRoute.Unknown
+			}
+		}
+		l.Country = string(detectedCC)
+		if detectedCC.IsUnknown() {
+			l.Country = "XX"
+		}
+		groupsMap[detectedCC] = append(groupsMap[detectedCC], l)
+	}
+
+	groups := make([]lineGroup, 0, len(groupsMap))
+	for cc, items := range groupsMap {
+		groups = append(groups, lineGroup{cc: cc, items: items})
+	}
+
+	sort.SliceStable(groups, func(i, j int) bool {
+		isUnkI := groups[i].cc.IsUnknown() || groups[i].cc == "XX"
+		isUnkJ := groups[j].cc.IsUnknown() || groups[j].cc == "XX"
+		if isUnkI != isUnkJ {
+			return !isUnkI
+		}
+		if mode == GeoRoute.ModeSmallestFirst {
+			if len(groups[i].items) != len(groups[j].items) {
+				return len(groups[i].items) < len(groups[j].items)
+			}
+		} else if mode == GeoRoute.ModeAlphabetical {
+			return groups[i].cc < groups[j].cc
+		} else {
+			if len(groups[i].items) != len(groups[j].items) {
+				return len(groups[i].items) > len(groups[j].items)
+			}
+		}
+		return groups[i].cc < groups[j].cc
+	})
+
+	out := make([]Line, 0, len(lines))
+	for _, grp := range groups {
+		out = append(out, grp.items...)
+	}
+	return out
+}
+
+func readAllLinesFromFile(path string) ([]string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	var lines []string
+	scanner := bufio.NewScanner(f)
+	buf := make([]byte, 1024*1024)
+	scanner.Buffer(buf, 10*1024*1024)
+	for scanner.Scan() {
+		text := strings.TrimSpace(scanner.Text())
+		if text != "" {
+			lines = append(lines, text)
+		}
+	}
+	return lines, scanner.Err()
+}
+
 // resolveReader transforma cualquier origen soportado en un ChunkReader optimizado.
-func resolveReader(source interface{}, chunkSize int, pool *ChunkPool) (ChunkReader, int64, error) {
+func resolveReader(source interface{}, chunkSize int, pool *ChunkPool, enableGeo bool, mode GeoRoute.SchedulingMode) (ChunkReader, int64, error) {
 	if chunkSize <= 0 {
 		chunkSize = 500
 	}
@@ -164,6 +337,15 @@ func resolveReader(source interface{}, chunkSize int, pool *ChunkPool) (ChunkRea
 		if fi.IsDir() {
 			return nil, 0, fmt.Errorf("progress: la ruta es un directorio: %s", s)
 		}
+
+		if enableGeo && fi.Size() < 250*1024*1024 {
+			lines, err := readAllLinesFromFile(s)
+			if err == nil {
+				orderedCombos, orderedCountries := sortCombosByCountry(lines, mode)
+				return NewSliceReaderWithCountries(orderedCombos, orderedCountries, rOpts), int64(len(orderedCombos)), nil
+			}
+		}
+
 		r, err := NewFileReader(s, rOpts)
 		if err != nil {
 			return nil, 0, err
@@ -171,9 +353,17 @@ func resolveReader(source interface{}, chunkSize int, pool *ChunkPool) (ChunkRea
 		return r, fi.Size(), nil
 
 	case []string:
+		if enableGeo {
+			orderedCombos, orderedCountries := sortCombosByCountry(s, mode)
+			return NewSliceReaderWithCountries(orderedCombos, orderedCountries, rOpts), int64(len(orderedCombos)), nil
+		}
 		return NewSliceReader(s, rOpts), int64(len(s)), nil
 
 	case []Line:
+		if enableGeo {
+			orderedLines := sortLinesByCountry(s, mode)
+			return NewLinesReader(orderedLines, rOpts), int64(len(orderedLines)), nil
+		}
 		return NewLinesReader(s, rOpts), int64(len(s)), nil
 
 	case ChunkReader:
@@ -245,7 +435,7 @@ func Process(ctx context.Context, source interface{}, fn ProcessFunc, opts ...Pr
 	}
 
 	chunkPool := NewChunkPool(cfg.chunkSize)
-	reader, _, err := resolveReader(source, cfg.chunkSize, chunkPool)
+	reader, _, err := resolveReader(source, cfg.chunkSize, chunkPool, cfg.enableGeoSorting, cfg.geoSchedulingMode)
 	if err != nil {
 		return Stats{}, err
 	}

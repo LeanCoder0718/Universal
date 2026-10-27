@@ -207,10 +207,29 @@ func ExtractCountryFromUsername(user string) (detectedRegion string, prefixStr s
 	return "", "", "", false, false
 }
 
+// CleanCountryFromUsername remueve cualquier tag regional existente del username,
+// devolviendo el usuario base limpio para proxies genéricos por defecto.
+func CleanCountryFromUsername(user string) string {
+	if user == "" {
+		return ""
+	}
+	tag, prefixStr, suffixStr, _, found := ExtractCountryFromUsername(user)
+	if found && tag != "" {
+		return stripRegionalPrefix(prefixStr, suffixStr)
+	}
+	return user
+}
+
 // ApplyCountryToUsername adapta el país en un username de proxy preservando el formato y mayúsculas/minúsculas.
+// Si el país es vacío, "XX", "GENERIC" o "UNKNOWN", limpia cualquier tag regional previo devolviendo
+// el usuario general por defecto sin extensión regional.
 func ApplyCountryToUsername(user, countryCode string) string {
-	if user == "" || countryCode == "" || countryCode == "XX" || countryCode == "GENERIC" {
-		return user
+	if user == "" {
+		return ""
+	}
+	countryCode = strings.TrimSpace(countryCode)
+	if countryCode == "" || strings.EqualFold(countryCode, "XX") || strings.EqualFold(countryCode, "GENERIC") || strings.EqualFold(countryCode, "UNKNOWN") {
+		return CleanCountryFromUsername(user)
 	}
 
 	_, prefixStr, suffixStr, isUpper, found := ExtractCountryFromUsername(user)

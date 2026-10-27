@@ -478,3 +478,79 @@ func TestFineGrainedParallelismNoConvoy(t *testing.T) {
 	}
 }
 
+// TestProgress_GeoRouteCountryGroupingAndOrder valida la agrupación secuencial por país (ES > PE > US > XX)
+// y que cada Line entregada a processFn porte su CountryCode exacto.
+func TestProgress_GeoRouteCountryGroupingAndOrder(t *testing.T) {
+	// Mezclar intencionalmente el orden de entrada
+	input := []string{
+		"generic1@domain.com:pass", // XX
+		"peru1@domain.pe:pass",     // PE
+		"spain1@domain.es:pass",    // ES
+		"usa1@domain.us:pass",      // US
+		"spain2@domain.es:pass",    // ES
+		"peru2@domain.pe:pass",     // PE
+		"spain3@domain.es:pass",    // ES
+		"spain4@domain.es:pass",    // ES
+		"usa2@domain.us:pass",      // US
+		"spain5@domain.es:pass",    // ES
+		"peru3@domain.pe:pass",     // PE
+	}
+	// Conteo esperado:
+	// ES: 5 líneas (mayor volumen -> procesado 1°)
+	// PE: 3 líneas (segundo volumen -> procesado 2°)
+	// US: 2 líneas (tercer volumen -> procesado 3°)
+	// XX: 1 línea  (genérico -> procesado al final)
+
+	var mu sync.Mutex
+	var receivedCountries []string
+
+	fn := func(line *Line) ([]byte, error) {
+		mu.Lock()
+		receivedCountries = append(receivedCountries, line.Country)
+		mu.Unlock()
+		return []byte("ok"), nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	stats, err := Process(ctx, input, fn,
+		WithWorkers(1), // 1 worker secuencial para validar el orden exacto de entrega de la cola
+		WithChunkSize(2),
+		WithAutoTune(false),
+		WithKeyboard(false),
+		WithMaxRetries(0),
+		WithGeoSorting(true),
+	)
+	if err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	if stats.TotalLines != uint64(len(input)) {
+		t.Fatalf("TotalLines = %d, want %d", stats.TotalLines, len(input))
+	}
+
+	// Validar que las primeras 5 sean ES
+	for i := 0; i < 5; i++ {
+		if receivedCountries[i] != "ES" {
+			t.Errorf("pos %d: country = %s, want ES", i, receivedCountries[i])
+		}
+	}
+	// Las siguientes 3 deben ser PE
+	for i := 5; i < 8; i++ {
+		if receivedCountries[i] != "PE" {
+			t.Errorf("pos %d: country = %s, want PE", i, receivedCountries[i])
+		}
+	}
+	// Las siguientes 2 deben ser US
+	for i := 8; i < 10; i++ {
+		if receivedCountries[i] != "US" {
+			t.Errorf("pos %d: country = %s, want US", i, receivedCountries[i])
+		}
+	}
+	// La última debe ser XX (genérico)
+	if receivedCountries[10] != "XX" {
+		t.Errorf("pos 10: country = %s, want XX", receivedCountries[10])
+	}
+}
+

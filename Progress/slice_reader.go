@@ -7,6 +7,7 @@ import (
 // SliceReader administra la lectura por bloques (chunks) a partir de una lista []string en memoria.
 type SliceReader struct {
 	lines      []string
+	countries  []string
 	pool       *ChunkPool
 	sched      *AdaptiveScheduler
 	chunkSize  int
@@ -17,6 +18,11 @@ type SliceReader struct {
 
 // NewSliceReader retorna una instancia de SliceReader lista para streaming de chunks.
 func NewSliceReader(lines []string, opts ReaderOptions) *SliceReader {
+	return NewSliceReaderWithCountries(lines, nil, opts)
+}
+
+// NewSliceReaderWithCountries retorna una instancia de SliceReader asociando el país detectado por cada línea.
+func NewSliceReaderWithCountries(lines []string, countries []string, opts ReaderOptions) *SliceReader {
 	if opts.ChunkSize <= 0 {
 		opts.ChunkSize = 1000
 	}
@@ -26,6 +32,7 @@ func NewSliceReader(lines []string, opts ReaderOptions) *SliceReader {
 
 	return &SliceReader{
 		lines:     lines,
+		countries: countries,
 		pool:      opts.ChunkPool,
 		sched:     opts.Scheduler,
 		chunkSize: opts.ChunkSize,
@@ -55,9 +62,15 @@ func (r *SliceReader) NextChunk() (*Chunk, error) {
 		r.currIdx++
 		r.currLineID++
 
+		var country string
+		if r.countries != nil && r.currIdx-1 < len(r.countries) {
+			country = r.countries[r.currIdx-1]
+		}
+
 		chk.Lines = append(chk.Lines, Line{
 			ID:      r.currLineID,
 			Content: []byte(lineStr),
+			Country: country,
 		})
 		linesRead++
 	}

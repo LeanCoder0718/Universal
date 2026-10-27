@@ -1,0 +1,106 @@
+package HTTPClient
+
+import (
+	"context"
+	"strings"
+	"testing"
+)
+
+// TestSession_GeoRouteProxyTransitionToGeneric valida que SetGeoCountry conmute a proxies
+// regionales (ej. ES, PE) y limpie correctamente el username al retornar a genérico ("XX" o "").
+func TestSession_GeoRouteProxyTransitionToGeneric(t *testing.T) {
+	pool := newTestProxyPool(t, 1) // 10.0.0.1:8080:user1:pass1
+	cfg := Default()
+	sess, err := NewSession(cfg,
+		WithProxyPool(pool),
+		WithTransportFactory(&testLoopbackFactory{}),
+	)
+	if err != nil {
+		t.Fatalf("error creando sesión: %v", err)
+	}
+	defer sess.Close()
+
+	// 1. Configurar país ES
+	if err := sess.SetGeoCountry("ES"); err != nil {
+		t.Fatalf("SetGeoCountry(ES) error: %v", err)
+	}
+	displayES := sess.ProxyDisplay()
+	if !strings.Contains(strings.ToLower(displayES), "es") {
+		t.Errorf("ProxyDisplay = %q, expected country tag ES", displayES)
+	}
+
+	// 2. Conmutar a PE
+	if err := sess.SetGeoCountry("PE"); err != nil {
+		t.Fatalf("SetGeoCountry(PE) error: %v", err)
+	}
+	displayPE := sess.ProxyDisplay()
+	if !strings.Contains(strings.ToLower(displayPE), "pe") {
+		t.Errorf("ProxyDisplay = %q, expected country tag PE", displayPE)
+	}
+
+	// 3. Conmutar a genérico con "XX" -> debe retornar al proxy general base (user1)
+	if err := sess.SetGeoCountry("XX"); err != nil {
+		t.Fatalf("SetGeoCountry(XX) error: %v", err)
+	}
+	displayXX := sess.ProxyDisplay()
+	if displayXX != "user1" {
+		t.Errorf("ProxyDisplay = %q, want clean base user 'user1' on XX", displayXX)
+	}
+
+	// 4. Conmutar a genérico con "" -> debe permanecer en el proxy general base (user1)
+	if err := sess.SetGeoCountry(""); err != nil {
+		t.Fatalf("SetGeoCountry('') error: %v", err)
+	}
+	displayEmpty := sess.ProxyDisplay()
+	if displayEmpty != "user1" {
+		t.Errorf("ProxyDisplay = %q, want clean base user 'user1' on empty country", displayEmpty)
+	}
+}
+
+// TestSession_DoWithSpecCountry valida que Spec.Country active la conmutación automática en Do()
+func TestSession_DoWithSpecCountry(t *testing.T) {
+	pool := newTestProxyPool(t, 1)
+	cfg := Default()
+	sess, err := NewSession(cfg,
+		WithProxyPool(pool),
+		WithTransportFactory(&testLoopbackFactory{}),
+	)
+	if err != nil {
+		t.Fatalf("error creando sesión: %v", err)
+	}
+	defer sess.Close()
+
+	// Ejecutar Do con Spec.Country = "ES"
+	specES := Spec{
+		Method:  "GET",
+		URL:     "http://example.com/check",
+		Country: "ES",
+	}
+	res, err := sess.Do(context.Background(), specES)
+	if err != nil {
+		t.Fatalf("Do(specES) error: %v", err)
+	}
+	res.Release()
+
+	displayES := sess.ProxyDisplay()
+	if !strings.Contains(strings.ToLower(displayES), "es") {
+		t.Errorf("ProxyDisplay = %q, want regional tag ES", displayES)
+	}
+
+	// Ejecutar Do con Spec.Country = "XX" (retorno a genérico)
+	specXX := Spec{
+		Method:  "GET",
+		URL:     "http://example.com/check",
+		Country: "XX",
+	}
+	res2, err := sess.Do(context.Background(), specXX)
+	if err != nil {
+		t.Fatalf("Do(specXX) error: %v", err)
+	}
+	res2.Release()
+
+	displayXX := sess.ProxyDisplay()
+	if displayXX != "user1" {
+		t.Errorf("ProxyDisplay = %q, want clean base user 'user1' after XX", displayXX)
+	}
+}
