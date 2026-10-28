@@ -53,6 +53,7 @@ type Signal struct {
 	Idempotent    bool // true = el caller autoriza retry aunque no sea GET/HEAD/...
 	BodyComplete  bool
 	BodyTruncated bool
+	RetryAfter    time.Duration
 }
 
 type Decision struct {
@@ -98,11 +99,25 @@ func (d *DefaultClassifier) Classify(s Signal) ErrorClass {
 			return ClassTransientNetwork
 		}
 		errStr := strings.ToLower(s.NetErr.Error())
-		// Evitar false-positive por body/HTML que mencione "certificate"
+
+		// Mejora 1: Discriminar fallos de gateway/proxy de fallos de huella TLS con el servidor
+		isProxyErr := strings.Contains(errStr, "proxy") ||
+			strings.Contains(errStr, "socks") ||
+			strings.Contains(errStr, "gateway") ||
+			strings.Contains(errStr, "tunnel") ||
+			strings.Contains(errStr, "connectex")
+
+		if isProxyErr {
+			// El proxy falló, cerró el túnel o fue rechazado -> rotar proxy (ActionRotateProxy)
+			return ClassBlocked
+		}
+
+		// Fallo de negociación TLS estrictamente con el servidor de destino
 		if strings.Contains(errStr, "tls:") ||
 			strings.Contains(errStr, "handshake") ||
 			strings.Contains(errStr, "x509:") ||
-			strings.Contains(errStr, "certificate required") {
+			strings.Contains(errStr, "certificate required") ||
+			strings.Contains(errStr, "unrecognized name") {
 			return ClassTLSFingerprint
 		}
 		return ClassTransientNetwork
@@ -206,6 +221,20 @@ func (e *Engine) Decide(attempt int, s Signal) Decision {
 
 	action := actionFor(class)
 	wait := e.backoff(attempt, class)
+
+	// Mejora 2: Si el servidor especificó Retry-After, respetarlo si es razonable
+	if s.RetryAfter > 0 {
+		if s.RetryAfter <= 60*time.Second {
+			if s.RetryAfter > wait {
+				wait = s.RetryAfter
+			}
+		} else {
+			// Si el servidor exige esperar un tiempo excesivo (ej. horas/días),
+			// no bloquear el worker: forzar cambio de proxy inmediato para continuar
+			action = ActionRotateProxy
+		}
+	}
+
 	return Decision{Class: class, Action: action, Retry: true, Wait: wait, Reason: reasonFor(class)}
 }
 

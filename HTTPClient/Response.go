@@ -16,6 +16,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -63,12 +64,37 @@ func (res *Result) Release() {
 	}
 }
 
+// PreserveBodyForError recicla el buffer al pool pero conserva una copia segura
+// desacoplada de los bytes en BodyBytes para el llamador, evitando memory leaks y data races.
+func (res *Result) PreserveBodyForError() {
+	if res != nil && res.Response != nil {
+		res.Response.PreserveBodyForError()
+	}
+}
+
 // Release devuelve el buffer interno al pool para evitar memory leaks de buffers y aliviar al GC.
 func (r *Response) Release() {
 	if r != nil && r.poolBuf != nil {
 		PutBuffer(r.poolBuf)
 		r.poolBuf = nil
 		r.BodyBytes = nil
+	}
+}
+
+// PreserveBodyForError devuelve el buffer al pool pero conserva una copia segura
+// desacoplada de los bytes en r.BodyBytes, evitando data races con el pool y
+// permitiendo al llamador inspeccionar cuerpos truncados o de error de forma segura.
+func (r *Response) PreserveBodyForError() {
+	if r != nil && r.poolBuf != nil {
+		if len(r.BodyBytes) > 0 {
+			safeCopy := make([]byte, len(r.BodyBytes))
+			copy(safeCopy, r.BodyBytes)
+			r.BodyBytes = safeCopy
+		} else {
+			r.BodyBytes = nil
+		}
+		PutBuffer(r.poolBuf)
+		r.poolBuf = nil
 	}
 }
 
@@ -100,6 +126,33 @@ func (r *Response) HeaderValue(name string) string {
 
 func (r *Response) ContentType() string     { return r.HeaderValue("Content-Type") }
 func (r *Response) ContentEncoding() string { return r.HeaderValue("Content-Encoding") }
+
+// RetryAfter extrae y resuelve la duración solicitada por el servidor en la cabecera 'Retry-After'.
+func (r *Response) RetryAfter() time.Duration {
+	if r == nil {
+		return 0
+	}
+	return ParseRetryAfter(r.HeaderValue("Retry-After"))
+}
+
+// ParseRetryAfter parsea el valor de la cabecera 'Retry-After' en segundos enteros
+// (ej. "120") o en formato HTTP-Date (RFC 1123, RFC 850). Retorna 0 si es inválido o vacío.
+func ParseRetryAfter(val string) time.Duration {
+	val = strings.TrimSpace(val)
+	if val == "" {
+		return 0
+	}
+	if secs, err := strconv.Atoi(val); err == nil && secs >= 0 {
+		return time.Duration(secs) * time.Second
+	}
+	if t, err := http.ParseTime(val); err == nil {
+		d := time.Until(t)
+		if d > 0 {
+			return d
+		}
+	}
+	return 0
+}
 
 func (r *Response) IsJSON() bool {
 	return strings.Contains(strings.ToLower(r.ContentType()), "application/json")

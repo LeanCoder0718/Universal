@@ -45,9 +45,10 @@ type Session struct {
 	client        Client
 	directClient  Client
 	proxyPool     *Pool
-	currentProxy  *Entry
-	clientCache   map[string]Client
-	connMgr       *ConnectionManager
+	currentProxy   *Entry
+	clientCache    map[string]Client
+	clientLastUsed map[string]time.Time
+	connMgr        *ConnectionManager
 	currentGeoKey ConnectionKey
 	stickyID      string
 	opts          sessionParams
@@ -221,9 +222,10 @@ func NewSession(cfg *Config, opts ...Option) (*Session, error) {
 		factory:     params.factory,
 		proxyPool:   pool,
 		connMgr:     params.connMgr,
-		opts:        params,
-		clientCache: make(map[string]Client),
-		stickyID:    NewStickyID(),
+		opts:           params,
+		clientCache:    make(map[string]Client),
+		clientLastUsed: make(map[string]time.Time),
+		stickyID:       NewStickyID(),
 	}
 
 	if err := s.buildClient(); err != nil {
@@ -241,20 +243,35 @@ func (s *Session) getOrCreateClientLocked(entry *Entry, followRedirects bool) (C
 	if s.clientCache == nil {
 		s.clientCache = make(map[string]Client)
 	}
+	if s.clientLastUsed == nil {
+		s.clientLastUsed = make(map[string]time.Time)
+	}
 
 	if cached, ok := s.clientCache[key]; ok && cached != nil {
+		s.clientLastUsed[key] = time.Now()
 		return cached, nil
 	}
 
-	// H-08 Fix: Limitar el tamaño de clientCache para evitar fugas de sockets TCP/TLS
+	// LRU Eviction: Desalojar el cliente menos recientemente usado al superar el límite
 	const maxCachedClients = 8
 	if len(s.clientCache) >= maxCachedClients {
-		for k, c := range s.clientCache {
-			if c != nil {
-				c.CloseIdleConnections()
+		var oldestKey string
+		var oldestTime time.Time
+		first := true
+		for k := range s.clientCache {
+			t := s.clientLastUsed[k]
+			if first || t.Before(oldestTime) {
+				oldestTime = t
+				oldestKey = k
+				first = false
 			}
-			delete(s.clientCache, k)
-			break
+		}
+		if oldestKey != "" {
+			if oldClient := s.clientCache[oldestKey]; oldClient != nil {
+				oldClient.CloseIdleConnections()
+			}
+			delete(s.clientCache, oldestKey)
+			delete(s.clientLastUsed, oldestKey)
 		}
 	}
 
@@ -277,6 +294,7 @@ func (s *Session) getOrCreateClientLocked(entry *Entry, followRedirects bool) (C
 	}
 
 	s.clientCache[key] = client
+	s.clientLastUsed[key] = time.Now()
 	return client, nil
 }
 
@@ -338,6 +356,17 @@ func (s *Session) refreshLocked() error {
 	s.stickyID = NewStickyID()
 	s.requestCount.Store(0)
 	s.resetCount.Add(1)
+
+	// Limpieza obligatoria de clientes cacheados para que la nueva identidad (TLSProfile y Jar)
+	// no sea reemplazada accidentalmente por un cliente antiguo con la misma clave de proxy.
+	for _, c := range s.clientCache {
+		if c != nil {
+			c.CloseIdleConnections()
+		}
+	}
+	s.clientCache = make(map[string]Client)
+	s.clientLastUsed = make(map[string]time.Time)
+
 	return s.buildClient()
 }
 
@@ -719,10 +748,11 @@ func (s *Session) Do(ctx context.Context, spec Spec) (*Result, error) {
 			}
 
 			rErr := resultErr(result)
-			// Auto-liberar memoria en caso de error final. Previene fugas si el
-			// desarrollador solo evalúa `if err != nil` y olvida llamar a Release().
+			// En caso de error final, reciclamos el buffer al pool pero conservamos
+			// una copia segura desacoplada en BodyBytes para el llamador (diagnóstico),
+			// evitando data races y fugas de buffers.
 			if rErr != nil && result != nil {
-				result.Release()
+				result.PreserveBodyForError()
 			}
 			return result, rErr
 		}
@@ -740,7 +770,7 @@ func (s *Session) Do(ctx context.Context, spec Spec) (*Result, error) {
 		if err := s.applyAction(gen, decision.Action, decision.Class); err != nil {
 			s.failureCount.Add(1)
 			if result != nil {
-				result.Release()
+				result.PreserveBodyForError()
 			}
 			return result, err
 		}
@@ -748,7 +778,7 @@ func (s *Session) Do(ctx context.Context, spec Spec) (*Result, error) {
 
 	s.failureCount.Add(1)
 	if lastResult != nil {
-		lastResult.Release()
+		lastResult.PreserveBodyForError()
 	}
 	return lastResult, fmt.Errorf("browser: agotados %d intentos: %w", maxAttempts, ErrMaxRetriesExceeded)
 }
@@ -930,6 +960,7 @@ func (s *Session) attemptWith(ctx context.Context, st state, spec Spec, attemptN
 		Idempotent:    spec.Idempotent,
 		BodyComplete:  resp.Complete,
 		BodyTruncated: resp.Truncated,
+		RetryAfter:    resp.RetryAfter(),
 	})
 	return result, dec
 }
@@ -973,6 +1004,7 @@ func (s *Session) Close() {
 		}
 	}
 	s.clientCache = nil
+	s.clientLastUsed = nil
 }
 
 // CurrentProxy retorna una copia de la entrada del proxy activo o nil si no hay proxy.
@@ -1050,6 +1082,7 @@ func (s *Session) ResetComboState(rotateIdentity bool) error {
 				}
 			}
 			s.clientCache = make(map[string]Client)
+			s.clientLastUsed = make(map[string]time.Time)
 			_ = s.buildClient()
 		}
 	}

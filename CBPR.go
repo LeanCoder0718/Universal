@@ -70,9 +70,10 @@ func findRemainingComboFiles() []string {
 
 var updateLeanCoderOnce sync.Once
 
-// UpdateLeanCoderProjects comprueba y actualiza automáticamente los repositorios Git
-// de LeanCoder (github.com/LeanCoder0718) antes de iniciar el programa.
-// Se ejecuta una única vez por sesión y no detiene el programa si no hay conexión o git.
+// UpdateLeanCoderProjects comprueba y descarga automáticamente las últimas actualizaciones
+// directamente desde GitHub (github.com/LeanCoder0718) antes de iniciar el programa.
+// No depende de rutas locales del PC: todo se descarga y sincroniza directamente desde GitHub.
+// Se ejecuta una única vez por sesión y no detiene el programa si no hay conexión.
 func UpdateLeanCoderProjects() {
 	updateLeanCoderOnce.Do(func() {
 		gitPath, err := exec.LookPath("git")
@@ -80,14 +81,14 @@ func UpdateLeanCoderProjects() {
 			return
 		}
 
-		var candidateDirs []string
+		var targetDirs []string
 		seen := make(map[string]bool)
 
-		addCandidate := func(p string) {
-			if p == "" {
+		addTarget := func(dir string) {
+			if dir == "" {
 				return
 			}
-			abs, err := filepath.Abs(p)
+			abs, err := filepath.Abs(dir)
 			if err != nil {
 				return
 			}
@@ -99,83 +100,78 @@ func UpdateLeanCoderProjects() {
 
 			gitTarget := filepath.Join(abs, ".git")
 			if _, err := os.Stat(gitTarget); err == nil {
-				candidateDirs = append(candidateDirs, abs)
+				targetDirs = append(targetDirs, abs)
 			}
 		}
 
-		// Candidatos en directorio de trabajo y Universal
-		addCandidate(".")
-		addCandidate("Universal")
-		addCandidate(filepath.Join("..", "Universal"))
-
-		if exePath, err := os.Executable(); err == nil {
-			exeDir := filepath.Dir(exePath)
-			addCandidate(exeDir)
-			addCandidate(filepath.Join(exeDir, "Universal"))
+		// 1. Directorio del módulo Universal (resuelto directamente en runtime)
+		if _, currentFile, _, ok := runtime.Caller(0); ok {
+			addTarget(filepath.Dir(currentFile))
 		}
 
-		// Subcarpetas del directorio actual
-		if entries, err := os.ReadDir("."); err == nil {
-			for _, e := range entries {
-				if e.IsDir() && !strings.HasPrefix(e.Name(), ".") {
-					addCandidate(e.Name())
-					addCandidate(filepath.Join(e.Name(), "Universal"))
-				}
-			}
+		// 2. Directorio de trabajo actual del proyecto que ejecuta la aplicación
+		if cwd, err := os.Getwd(); err == nil {
+			addTarget(cwd)
 		}
 
-		// Carpetas hermanas en el directorio padre
-		if entries, err := os.ReadDir(".."); err == nil {
-			for _, e := range entries {
-				if e.IsDir() && !strings.HasPrefix(e.Name(), ".") {
-					addCandidate(filepath.Join("..", e.Name()))
-					addCandidate(filepath.Join("..", e.Name(), "Universal"))
-				}
-			}
+		// Filtrar únicamente los repositorios cuyo remote apunte directamente a GitHub (LeanCoder)
+		type repoTarget struct {
+			dir       string
+			name      string
+			remoteURL string
 		}
+		var reposToSync []repoTarget
 
-		var reposToUpdate []string
-		for _, dir := range candidateDirs {
+		for _, dir := range targetDirs {
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			cmd := exec.CommandContext(ctx, "git", "-C", dir, "remote", "get-url", "origin")
 			out, err := cmd.Output()
 			cancel()
+
 			if err == nil {
-				remoteURL := strings.ToLower(string(out))
-				if strings.Contains(remoteURL, "leancoder") {
-					reposToUpdate = append(reposToUpdate, dir)
+				remoteURL := strings.TrimSpace(string(out))
+				remoteLower := strings.ToLower(remoteURL)
+				// Validar que el origen sea directamente GitHub y pertenezca a LeanCoder
+				if strings.Contains(remoteLower, "github.com") && strings.Contains(remoteLower, "leancoder") {
+					name := filepath.Base(dir)
+					// Extraer nombre del repo desde la URL de GitHub (ej. Universal.git -> Universal)
+					parts := strings.Split(remoteURL, "/")
+					if len(parts) > 0 {
+						last := strings.TrimSuffix(parts[len(parts)-1], ".git")
+						if last != "" {
+							name = last
+						}
+					}
+					reposToSync = append(reposToSync, repoTarget{
+						dir:       dir,
+						name:      name,
+						remoteURL: remoteURL,
+					})
 				}
 			}
 		}
 
-		if len(reposToUpdate) == 0 {
+		if len(reposToSync) == 0 {
 			return
 		}
 
-		fmt.Println(Red(" → "), WhiteColor("VERIFICANDO ACTUALIZACIONES DE LEANCODER..."))
-		for _, dir := range reposToUpdate {
-			repoName := filepath.Base(dir)
-			if strings.EqualFold(repoName, "Universal") {
-				parent := filepath.Base(filepath.Dir(dir))
-				if parent != "" && parent != "." && parent != "/" && parent != "\\" {
-					repoName = parent + "/" + repoName
-				}
-			}
-
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			cmd := exec.CommandContext(ctx, "git", "-C", dir, "pull", "--ff-only")
+		fmt.Println(Red(" → "), WhiteColor("VERIFICANDO ACTUALIZACIONES"))
+		for _, repo := range reposToSync {
+			// Descarga directa desde GitHub usando git pull fast-forward sobre el remote oficial
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			cmd := exec.CommandContext(ctx, "git", "-C", repo.dir, "pull", "--ff-only")
 			out, err := cmd.CombinedOutput()
 			cancel()
 
 			if err == nil {
 				outStr := strings.ToLower(string(out))
-				if strings.Contains(outStr, "already up to date") || strings.Contains(outStr, "actualizado") {
-					fmt.Printf("   %s %s: %s\n", LimeGreen("✔"), repoName, WhiteColor("Al día"))
+				if strings.Contains(outStr, "already up to date") || strings.Contains(outStr, "al día") || strings.Contains(outStr, "actualizado") {
+					fmt.Printf("   %s %s (GitHub): %s\n", LimeGreen("✔"), repo.name, WhiteColor("Al día"))
 				} else {
-					fmt.Printf("   %s %s: %s\n", LimeGreen("✔"), repoName, LimeGreen("¡Actualizado con éxito!"))
+					fmt.Printf("   %s %s (GitHub): %s\n", LimeGreen("✔"), repo.name, LimeGreen("¡Descargado y actualizado con éxito!"))
 				}
 			} else {
-				fmt.Printf("   %s %s: %s\n", OrangeCo("⚠"), repoName, WhiteColor("No se pudo conectar (continuando...)"))
+				fmt.Printf("   %s %s (GitHub): %s\n", OrangeCo("⚠"), repo.name, WhiteColor("Sin conexión a GitHub (continuando...)"))
 			}
 		}
 		fmt.Println()
