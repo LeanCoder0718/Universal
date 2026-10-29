@@ -137,9 +137,7 @@ func (b *Builder) Build(spec Spec, cookieHeader string) (*fhttp.Request, error) 
 		for k, v := range spec.Extra {
 			if strings.EqualFold(k, "Host") {
 				req.Host = v
-				delete(req.Header, k)
-				delete(req.Header, "Host")
-				delete(req.Header, "host")
+				req.Header["Host"] = []string{v}
 			}
 		}
 	}
@@ -178,7 +176,7 @@ func (b *Builder) Build(spec Spec, cookieHeader string) (*fhttp.Request, error) 
 		customOrder := make([]string, 0, len(spec.HeaderOrder))
 		for _, h := range spec.HeaderOrder {
 			cleaned := strings.ToLower(strings.TrimSpace(h))
-			if cleaned != "" && !strings.EqualFold(cleaned, "host") {
+			if cleaned != "" {
 				customOrder = append(customOrder, cleaned)
 			}
 		}

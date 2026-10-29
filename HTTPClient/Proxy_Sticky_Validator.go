@@ -1,4 +1,4 @@
-﻿package HTTPClient
+package HTTPClient
 
 import (
 	"context"
@@ -610,6 +610,9 @@ type StickyConfigFile struct {
 
 // SaveStickyConfigFile guarda la configuración completa de proxies validadas.
 func SaveStickyConfigFile(filePath string, results []StickyResult) error {
+	if filePath == "" {
+		return nil
+	}
 	dir := filepath.Dir(filePath)
 	if dir != "" && dir != "." {
 		_ = os.MkdirAll(dir, 0755)
@@ -662,17 +665,16 @@ func SaveStickyConfigFile(filePath string, results []StickyResult) error {
 }
 
 // PrepareProxiesForSession es la función orquestadora principal para cualquier proyecto que use Universal.
-// 1. Diagnostica automáticamente las proxies con caché TTL.
+// 1. Diagnostica automáticamente las proxies con soporte Sticky Session en memoria.
 // 2. Filtra proxies caídas (Unreachable).
 // 3. Determina si todas las proxies activas soportan Sticky Session (StickyOK).
-// 4. Guarda la configuración en Files/proxy_config.json.
+// 4. Mantiene la validación 100% en memoria sin escribir archivos .json en disco por defecto.
 func PrepareProxiesForSession(ctx context.Context, rawProxies []string, proxyType string, customCachePath ...string) (activeProxies []string, useSticky bool) {
 	if len(rawProxies) == 0 {
 		return rawProxies, false
 	}
 
-	cacheFile := filepath.Join("Files", "proxy_sticky_cache.json")
-	configFile := filepath.Join("Files", "proxy_config.json")
+	var cacheFile string
 	if len(customCachePath) > 0 && customCachePath[0] != "" {
 		cacheFile = customCachePath[0]
 	}
@@ -697,7 +699,10 @@ func PrepareProxiesForSession(ctx context.Context, rawProxies []string, proxyTyp
 	}
 
 	results := cache.ValidateWithCache(ctx, rawProxies, poolCfg)
-	_ = SaveStickyConfigFile(configFile, results)
+	if cacheFile != "" {
+		configFile := filepath.Join(filepath.Dir(cacheFile), "proxy_config.json")
+		_ = SaveStickyConfigFile(configFile, results)
+	}
 
 	var stickyCount, rotatingCount, disabledCount int
 	var healthy []string

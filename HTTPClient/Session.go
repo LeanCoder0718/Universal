@@ -1225,7 +1225,37 @@ func (s *Session) debugLog(spec Spec, result *Result) {
 				maxKeyLen = len(k)
 			}
 		}
-		sort.Strings(keys)
+		var orderList []string
+		if order, ok := req.Header[HeaderOrderKey]; ok && len(order) > 0 {
+			orderList = order
+		} else if len(spec.HeaderOrder) > 0 {
+			orderList = spec.HeaderOrder
+		}
+		if len(orderList) > 0 {
+			orderMap := make(map[string]int, len(orderList))
+			for i, ord := range orderList {
+				lowerOrd := strings.ToLower(strings.TrimSpace(ord))
+				if _, exists := orderMap[lowerOrd]; !exists {
+					orderMap[lowerOrd] = i
+				}
+			}
+			sort.SliceStable(keys, func(i, j int) bool {
+				idxI, okI := orderMap[strings.ToLower(keys[i])]
+				idxJ, okJ := orderMap[strings.ToLower(keys[j])]
+				if okI && okJ {
+					return idxI < idxJ
+				}
+				if okI && !okJ {
+					return true
+				}
+				if !okI && okJ {
+					return false
+				}
+				return keys[i] < keys[j]
+			})
+		} else {
+			sort.Strings(keys)
+		}
 		for _, k := range keys {
 			var val string
 			if vals, ok := req.Header[k]; ok && len(vals) > 0 {
@@ -1252,7 +1282,35 @@ func (s *Session) debugLog(spec Spec, result *Result) {
 				maxKeyLen = len(k)
 			}
 		}
-		sort.Strings(keys)
+		var orderList []string
+		if len(spec.HeaderOrder) > 0 {
+			orderList = spec.HeaderOrder
+		}
+		if len(orderList) > 0 {
+			orderMap := make(map[string]int, len(orderList))
+			for i, ord := range orderList {
+				lowerOrd := strings.ToLower(strings.TrimSpace(ord))
+				if _, exists := orderMap[lowerOrd]; !exists {
+					orderMap[lowerOrd] = i
+				}
+			}
+			sort.SliceStable(keys, func(i, j int) bool {
+				idxI, okI := orderMap[strings.ToLower(keys[i])]
+				idxJ, okJ := orderMap[strings.ToLower(keys[j])]
+				if okI && okJ {
+					return idxI < idxJ
+				}
+				if okI && !okJ {
+					return true
+				}
+				if !okI && okJ {
+					return false
+				}
+				return keys[i] < keys[j]
+			})
+		} else {
+			sort.Strings(keys)
+		}
 		for _, k := range keys {
 			val := spec.Extra[k]
 			if strings.EqualFold(k, "x-session-id") {
