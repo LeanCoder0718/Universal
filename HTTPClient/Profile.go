@@ -1,6 +1,7 @@
 package HTTPClient
 
 import (
+	"strings"
 	"time"
 
 	tlsprofiles "github.com/bogdanfinn/tls-client/profiles"
@@ -31,10 +32,16 @@ type Profile struct {
 // creada por identity.New(). Esta es la ÚNICA función que decide protocolo
 // y capacidades a partir del navegador: nadie más debe hacer ese switch.
 func FromIdentity(id Identity) Profile {
+	bName := strings.ToLower(id.BrowserName)
+	supportsHints := id.Browser == BrowserChrome &&
+		!strings.Contains(bName, "safari") &&
+		!strings.Contains(bName, "okhttp") &&
+		!strings.Contains(bName, "native")
+
 	caps := Capabilities{
 		SupportsHTTP2:       true,
 		SupportsHTTP3:       false,
-		SupportsClientHints: id.Browser == BrowserChrome,
+		SupportsClientHints: supportsHints,
 	}
 
 	layout := resolveLayout(id.BrowserName)

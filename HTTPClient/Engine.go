@@ -1,6 +1,7 @@
 package HTTPClient
 
 import (
+	"net/url"
 	"sort"
 	"strings"
 
@@ -75,6 +76,36 @@ func (Engine) Build(layout Layout, ctx Context) fhttp.Header {
 			return ctx.ContentType, ctx.ContentType != ""
 		case "cookie":
 			return ctx.Cookie, ctx.Cookie != ""
+		case "sec-fetch-site":
+			if ctx.Extra != nil {
+				if v, ok := ctx.Extra["sec-fetch-site"]; ok && v != "" {
+					return v, true
+				}
+				ref := ""
+				for k, v := range ctx.Extra {
+					if strings.EqualFold(k, "referer") && v != "" {
+						ref = v
+						break
+					}
+				}
+				if ref != "" {
+					if refURL, err := url.Parse(ref); err == nil && refURL.Host != "" {
+						refHost := refURL.Hostname()
+						targetHost := ctx.Authority
+						if idx := strings.Index(targetHost, ":"); idx != -1 {
+							targetHost = targetHost[:idx]
+						}
+						if strings.EqualFold(refHost, targetHost) {
+							return "same-origin", true
+						}
+						if RootDomain(refHost) == RootDomain(targetHost) {
+							return "same-site", true
+						}
+						return "cross-site", true
+					}
+				}
+			}
+			return "none", true
 		default:
 			if ctx.Extra != nil {
 				v, ok := ctx.Extra[name]

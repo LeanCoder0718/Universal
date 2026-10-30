@@ -138,7 +138,7 @@ type LifecycleConfig struct {
 func Default() *Config {
 	return &Config{
 		HTTP: HTTPConfig{
-			EnableHTTP2: false, // HTTP/1.1 por defecto
+			EnableHTTP2: true, // HTTP/2 por defecto alineado con perfiles de navegador modernos
 			EnableHTTP3: false,
 		},
 		Cookie: CookieConfig{

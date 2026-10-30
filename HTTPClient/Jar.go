@@ -188,9 +188,11 @@ func (j *Jar) SetCookies(reqHost, reqPath string, fcookies []*fhttp.Cookie) {
 		isDelete := fc.MaxAge < 0 || c.isExpired(now) || strings.EqualFold(fc.Value, "DELETE")
 		if isDelete {
 			delete(bucket.cookies, key)
-			// Purgar también bajo "/" por si el servidor omitió Path= al ordenar la expiración
-			slashKey := strings.ToLower(c.Domain) + "|/|" + c.Name
-			delete(bucket.cookies, slashKey)
+			// Purgar bajo "/" SOLO si el servidor no especificó un Path o si ya apuntaba a "/"
+			if fc.Path == "" || c.Path == "/" {
+				slashKey := strings.ToLower(c.Domain) + "|/|" + c.Name
+				delete(bucket.cookies, slashKey)
+			}
 			continue
 		}
 		if len(bucket.cookies) >= j.cfg.MaxCookiesPerDomain && j.cfg.MaxCookiesPerDomain > 0 {
@@ -348,39 +350,24 @@ func (j *Jar) CookiesFor(reqHost, reqPath string, isSecure bool) []*fhttp.Cookie
 		return nil
 	}
 
-	// Deduplicar por nombre conservando la cookie más específica para reqHost+reqPath
-	bestByName := make(map[string]*Cookie, len(candidates))
-	for _, c := range candidates {
-		name := c.Name
-		existing, found := bestByName[name]
-		if !found || isMoreSpecific(c, existing, reqHost) {
-			bestByName[name] = c
-		}
-	}
-
-	deduped := make([]*Cookie, 0, len(bestByName))
-	for _, c := range bestByName {
-		deduped = append(deduped, c)
-	}
-
 	// Orden por especificidad de path (RFC 6265 §5.4: paths más largos
 	// primero) y luego por CreatedAt (más antiguas primero) para
-	// estabilidad determinística entre requests, idéntico al comportamiento
-	// observado en FLUJO.txt.
-	for i := 1; i < len(deduped); i++ {
+	// estabilidad determinística entre requests. No deduplicar por nombre:
+	// un navegador real envía todas las cookies coincidentes.
+	for i := 1; i < len(candidates); i++ {
 		for k := i; k > 0; k-- {
-			a, b := deduped[k-1], deduped[k]
+			a, b := candidates[k-1], candidates[k]
 			if len(a.Path) < len(b.Path) ||
 				(len(a.Path) == len(b.Path) && a.CreatedAt.After(b.CreatedAt)) {
-				deduped[k-1], deduped[k] = deduped[k], deduped[k-1]
+				candidates[k-1], candidates[k] = candidates[k], candidates[k-1]
 			} else {
 				break
 			}
 		}
 	}
 
-	out := make([]*fhttp.Cookie, 0, len(deduped))
-	for _, c := range deduped {
+	out := make([]*fhttp.Cookie, 0, len(candidates))
+	for _, c := range candidates {
 		out = append(out, &fhttp.Cookie{Name: c.Name, Value: c.Value})
 	}
 	return out

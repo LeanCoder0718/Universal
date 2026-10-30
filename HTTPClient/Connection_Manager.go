@@ -11,9 +11,9 @@ import (
 )
 
 // ConnectionKey identifica unívocamente un contexto de transporte reutilizable.
-// Permite que las conexiones TCP/TLS Keep-Alive se reutilicen por afinidad
-// geográfica y de ruta sin acoplarse rígidamente a la identidad de un worker.
+// Incluye SessionID para evitar contaminación cruzada de Cookie Jar o TLSProfile entre sesiones distintas.
 type ConnectionKey struct {
+	SessionID   string
 	CountryCode string
 	RouteID     string
 	Protocol    Protocol
@@ -26,6 +26,7 @@ func (k ConnectionKey) Normalized() ConnectionKey {
 		cc = "GENERIC"
 	}
 	return ConnectionKey{
+		SessionID:   strings.TrimSpace(k.SessionID),
 		CountryCode: cc,
 		RouteID:     strings.TrimSpace(k.RouteID),
 		Protocol:    k.Protocol,
@@ -33,6 +34,9 @@ func (k ConnectionKey) Normalized() ConnectionKey {
 }
 
 func (k ConnectionKey) String() string {
+	if k.SessionID != "" {
+		return fmt.Sprintf("%s:%s:%s:%s", k.SessionID, k.CountryCode, k.RouteID, k.Protocol)
+	}
 	return fmt.Sprintf("%s:%s:%s", k.CountryCode, k.RouteID, k.Protocol)
 }
 
@@ -192,7 +196,6 @@ func (cm *ConnectionManager) evictOldestIdleLocked() {
 	var oldestTime int64 = 1<<62 - 1
 	var found bool
 
-	now := time.Now().UnixNano()
 	for k, p := range cm.clients {
 		if p.ActiveLeases.Load() <= 0 {
 			last := p.LastUsed.Load()
@@ -204,7 +207,7 @@ func (cm *ConnectionManager) evictOldestIdleLocked() {
 		}
 	}
 
-	if found && (now-oldestTime) > int64(cm.idleTimeout) {
+	if found {
 		if p, ok := cm.clients[oldestKey]; ok {
 			delete(cm.clients, oldestKey)
 			if p.Client != nil {

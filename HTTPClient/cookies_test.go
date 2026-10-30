@@ -145,25 +145,28 @@ func TestJarDeduplicationAndSpecificity(t *testing.T) {
 		Path:   "/",
 	})
 
-	// Verificar deduplicación en petición a login.yahoo.com
+	// Verificar que bajo RFC 6265 §5.4 se preservan todas las cookies que hacen match
+	// (un navegador real envía tanto la cookie de dominio como la de subdominio sin descartarlas)
 	res := jar.CookiesFor("login.yahoo.com", "/account/challenge/password/validate", true)
-	if len(res) != 2 {
-		t.Fatalf("se esperaban exactamente 2 cookies deduplicadas, se obtuvieron %d", len(res))
+	if len(res) != 4 {
+		t.Fatalf("se esperaban 4 cookies coincidentes bajo RFC 6265, se obtuvieron %d", len(res))
 	}
 
-	vals := make(map[string]string)
+	foundIPQSD := 0
+	foundDeviceID := 0
 	for _, c := range res {
-		if _, exists := vals[c.Name]; exists {
-			t.Errorf("cookie DUPLICADA encontrada en CookiesFor: %s", c.Name)
+		if c.Name == "ipqsd" {
+			foundIPQSD++
 		}
-		vals[c.Name] = c.Value
+		if c.Name == "device_id_undefined" {
+			foundDeviceID++
+		}
 	}
-
-	if vals["ipqsd"] != "specific_value" {
-		t.Errorf("se esperaba valor específico 'specific_value' para ipqsd, se obtuvo %q", vals["ipqsd"])
+	if foundIPQSD != 2 {
+		t.Errorf("se esperaban 2 cookies ipqsd, se obtuvieron %d", foundIPQSD)
 	}
-	if vals["device_id_undefined"] != "device_specific" {
-		t.Errorf("se esperaba valor específico 'device_specific' para device_id_undefined, se obtuvo %q", vals["device_id_undefined"])
+	if foundDeviceID != 2 {
+		t.Errorf("se esperaban 2 cookies device_id_undefined, se obtuvieron %d", foundDeviceID)
 	}
 
 	// 4. Probar purga con Set-Cookie de eliminación (DELETE / Max-Age <= 0)

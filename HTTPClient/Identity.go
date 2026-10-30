@@ -75,6 +75,13 @@ var platforms = []platformInfo{
 			return "Windows NT 10.0; Win64; x64"
 		},
 	},
+	{
+		Name:        "macOS",
+		SecPlatform: `"macOS"`,
+		UAFragment: func(_ Browser) string {
+			return "Macintosh; Intel Mac OS X 10_15_7"
+		},
+	},
 }
 
 // Identity es el conjunto COMPLETO y COHERENTE de señales de cliente.
@@ -231,7 +238,7 @@ func pickPlatform(p buildParams, rng func() uint64) (Platform, error) {
 	if p.forcePlatform != nil {
 		pl := *p.forcePlatform
 		if int(pl) < 0 || int(pl) >= len(platforms) {
-			return 0, fmt.Errorf("identity: plataforma %d no implementada (solo Windows disponible)", pl)
+			return 0, fmt.Errorf("identity: plataforma %d no implementada", pl)
 		}
 		return pl, nil
 	}

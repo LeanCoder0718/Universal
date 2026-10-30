@@ -416,7 +416,7 @@ func (s *Session) applyAction(gen uint64, action retry.Action, class retry.Error
 	}
 	switch action {
 	case retry.ActionRotateProxy:
-		return s.rotateProxyLocked(false)
+		return s.rotateProxyLocked(class == retry.ClassBlocked)
 	case retry.ActionReconnect:
 		return s.reconnectLocked()
 	case retry.ActionRebuildIdentity:
@@ -509,7 +509,11 @@ func (s *Session) Identity() Identity {
 
 // Cookies expone el Jar para depuración. El Jar es thread-safe internamente
 // (su propio RWMutex), por eso no necesita el lock de Session.
-func (s *Session) Cookies() *Jar { return s.jar }
+func (s *Session) Cookies() *Jar {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.jar
+}
 
 // ProxyURL retorna la URL completa del proxy actual en formato genérico (ej: "http://user:pass@host:port").
 // Si no hay proxy configurado o activo en la sesión, retorna una cadena vacía.
@@ -540,6 +544,7 @@ func (s *Session) SetGeoCountry(countryCode string) error {
 	// con caché y afinidad de clave para preservar Keep-Alive entre países
 	if s.connMgr != nil {
 		normKey := ConnectionKey{
+			SessionID:   s.stickyID,
 			CountryCode: countryCode,
 			RouteID:     "default",
 			Protocol:    s.profile.Protocol,
