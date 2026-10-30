@@ -115,12 +115,9 @@ func New(cfg *HTTPClient.Config, opts PoolOptions, sessionOpts ...HTTPClient.Opt
 		maxRetries = 1
 	}
 
-	// SANITIZATION: Evitar "Retry Storms" (P3 Fix).
-	// Un WorkerPool orquesta múltiples sesiones y a menudo implementa
-	// reintentos a nivel de flujo de negocio. La sesión subyacente NUNCA
-	// debe reintentar por sí sola más de 1 vez, o se multiplicarían.
-	if cfg.Retry.MaxAttempts > 1 {
-		cfg.Retry.MaxAttempts = 1
+	// Configuración de reintentos por petición (Session.Do) con rotación automática de proxy.
+	if cfg.Retry.MaxAttempts <= 0 {
+		cfg.Retry.MaxAttempts = 3
 	}
 
 	p := &Pool{

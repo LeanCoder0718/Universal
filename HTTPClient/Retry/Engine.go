@@ -105,10 +105,17 @@ func (d *DefaultClassifier) Classify(s Signal) ErrorClass {
 			strings.Contains(errStr, "socks") ||
 			strings.Contains(errStr, "gateway") ||
 			strings.Contains(errStr, "tunnel") ||
-			strings.Contains(errStr, "connectex")
+			strings.Contains(errStr, "connectex") ||
+			strings.Contains(errStr, "awaiting headers") ||
+			strings.Contains(errStr, "timeout exceeded") ||
+			strings.Contains(errStr, "deadline exceeded") ||
+			strings.Contains(errStr, "connection refused") ||
+			strings.Contains(errStr, "connection reset") ||
+			strings.Contains(errStr, "broken pipe") ||
+			strings.Contains(errStr, "eof")
 
 		if isProxyErr {
-			// El proxy falló, cerró el túnel o fue rechazado -> rotar proxy (ActionRotateProxy)
+			// El proxy falló, cerró el túnel, fue rechazado o agotó timeout -> rotar proxy (ActionRotateProxy)
 			return ClassBlocked
 		}
 
@@ -206,11 +213,9 @@ func (e *Engine) Decide(attempt int, s Signal) Decision {
 		return Decision{Class: class, Action: ActionNone, Retry: false, Reason: "max attempts exhausted"}
 	}
 
-	// No reintentar métodos no idempotentes salvo autorización explícita.
-	// No reintentar métodos no idempotentes salvo autorización explícita o bloqueo a nivel WAF/Geo (ClassBlocked)
-	if !s.Idempotent && !isIdempotentMethod(s.Method) && class != ClassBlocked {
-		// Excepción controlada: TLS fingerprint sí puede reconstruir identidad
-		// solo si el caller marcó Idempotent o es safe method.
+	// No reintentar métodos no idempotentes salvo autorización explícita o cuando el fallo
+	// sea a nivel de transporte/red/proxy/WAF (la petición no se completó en el servidor de destino).
+	if !s.Idempotent && !isIdempotentMethod(s.Method) && class != ClassBlocked && class != ClassTransientNetwork && class != ClassTLSFingerprint {
 		return Decision{
 			Class:  class,
 			Action: ActionNone,
@@ -251,10 +256,8 @@ func actionFor(class ErrorClass) Action {
 	switch class {
 	case ClassTLSFingerprint:
 		return ActionRebuildIdentity
-	case ClassBlocked:
-		return ActionRotateProxy
-	case ClassTransientNetwork:
-		return ActionReconnect
+	case ClassBlocked, ClassTransientNetwork:
+		return ActionRotateProxy // Fallos de red o proxy rotan inmediatamente el proxy
 	case ClassRateLimited, ClassServerOverloaded:
 		return ActionWaitSameConn
 	default:
@@ -275,7 +278,7 @@ func reasonFor(class ErrorClass) string {
 	case ClassServerOverloaded:
 		return "server overloaded (503)"
 	case ClassTransientNetwork:
-		return "transient network error -> reconnect local"
+		return "transient network error -> rotate proxy"
 	case ClassPermanent:
 		return "permanent error, no retry"
 	default:
