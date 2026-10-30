@@ -104,6 +104,33 @@ func (e Entry) String(t Type) string {
 		t, url.QueryEscape(e.User), url.QueryEscape(e.Pass), e.Host, e.Port)
 }
 
+// RedactedString formatea la URL del proxy enmascarando la contraseña para logging seguro.
+func (e Entry) RedactedString(t Type) string {
+	if t == "" {
+		t = TypeHTTP
+	}
+	if !e.HasAuth() {
+		return fmt.Sprintf("%s://%s:%s", t, e.Host, e.Port)
+	}
+	return fmt.Sprintf("%s://%s:***@%s:%s",
+		t, url.QueryEscape(e.User), e.Host, e.Port)
+}
+
+// ParseProxyURL analiza una cadena de proxy en formato URL (ej: "http://user:pass@host:port")
+// extrayendo credenciales decodificadas y validadas sin fugas.
+func ParseProxyURL(raw string) (Entry, error) {
+	parsed, err := GeoRoute.ParseProxy(raw)
+	if err != nil {
+		return Entry{}, fmt.Errorf("proxy: URL inválida: %w", err)
+	}
+	return Entry{
+		Host: parsed.Host,
+		Port: parsed.Port,
+		User: parsed.Username,
+		Pass: parsed.Password,
+	}, nil
+}
+
 // ProxyStatus representa el estado de salud de un proxy en el pool.
 type ProxyStatus int
 

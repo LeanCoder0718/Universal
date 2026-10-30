@@ -1,12 +1,18 @@
 package HTTPClient
 
 import (
+	"bytes"
+	"compress/gzip"
+	"compress/zlib"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
 	retry "github.com/LeanCoder0718/Universal/HTTPClient/Retry"
+	"github.com/andybalholm/brotli"
 	fhttp "github.com/bogdanfinn/fhttp"
 	tlsprofiles "github.com/bogdanfinn/tls-client/profiles"
 )
@@ -206,5 +212,261 @@ func TestAudit_Config_DefaultHTTP2(t *testing.T) {
 	cfg := Default()
 	if !cfg.HTTP.EnableHTTP2 {
 		t.Errorf("Default().HTTP.EnableHTTP2 debe ser true por defecto para perfiles modernos")
+	}
+}
+
+func TestAudit_Decompression_GzipDeflateBrotli(t *testing.T) {
+	originalText := "Hello, this is a compressed payload for audit verification tests!"
+
+	// 1. Gzip
+	var gzBuf bytes.Buffer
+	gw := gzip.NewWriter(&gzBuf)
+	gw.Write([]byte(originalText))
+	gw.Close()
+
+	respGz := &Response{
+		StatusCode: 200,
+		Headers: fhttp.Header{
+			"Content-Encoding": []string{"gzip"},
+		},
+		BodyBytes: gzBuf.Bytes(),
+	}
+	if err := respGz.DecompressIfNeeded(); err != nil {
+		t.Fatalf("falló descompresión gzip: %v", err)
+	}
+	if string(respGz.BodyBytes) != originalText {
+		t.Errorf("gzip payload esperado %q, got %q", originalText, string(respGz.BodyBytes))
+	}
+	// Probar idempotencia (no descomprimir dos veces)
+	if err := respGz.DecompressIfNeeded(); err != nil {
+		t.Fatalf("segunda llamada a DecompressIfNeeded falló en gzip: %v", err)
+	}
+	if string(respGz.BodyBytes) != originalText {
+		t.Errorf("segunda llamada a gzip corrompió payload: %q", string(respGz.BodyBytes))
+	}
+
+	// 2. Deflate (zlib)
+	var zBuf bytes.Buffer
+	zw := zlib.NewWriter(&zBuf)
+	zw.Write([]byte(originalText))
+	zw.Close()
+
+	respDeflate := &Response{
+		StatusCode: 200,
+		Headers: fhttp.Header{
+			"Content-Encoding": []string{"deflate"},
+		},
+		BodyBytes: zBuf.Bytes(),
+	}
+	if err := respDeflate.DecompressIfNeeded(); err != nil {
+		t.Fatalf("falló descompresión deflate: %v", err)
+	}
+	if string(respDeflate.BodyBytes) != originalText {
+		t.Errorf("deflate payload esperado %q, got %q", originalText, string(respDeflate.BodyBytes))
+	}
+
+	// 3. Brotli (br)
+	var brBuf bytes.Buffer
+	bw := brotli.NewWriter(&brBuf)
+	bw.Write([]byte(originalText))
+	bw.Close()
+
+	respBr := &Response{
+		StatusCode: 200,
+		Headers: fhttp.Header{
+			"Content-Encoding": []string{"br"},
+		},
+		BodyBytes: brBuf.Bytes(),
+	}
+	if err := respBr.DecompressIfNeeded(); err != nil {
+		t.Fatalf("falló descompresión brotli: %v", err)
+	}
+	if string(respBr.BodyBytes) != originalText {
+		t.Errorf("brotli payload esperado %q, got %q", originalText, string(respBr.BodyBytes))
+	}
+}
+
+func TestAudit_ProxyURL_ParsingAndRedaction(t *testing.T) {
+	// Proxy con caracteres especiales codificados
+	rawURL := "http://user%40corp:p%40ss%23word@127.0.0.1:8080"
+	entry, err := ParseProxyURL(rawURL)
+	if err != nil {
+		t.Fatalf("ParseProxyURL falló: %v", err)
+	}
+
+	if entry.User != "user@corp" {
+		t.Errorf("esperado user 'user@corp', got %q", entry.User)
+	}
+	if entry.Pass != "p@ss#word" {
+		t.Errorf("esperado pass 'p@ss#word', got %q", entry.Pass)
+	}
+
+	// Verificar redacción de credenciales en logs
+	redacted := entry.RedactedString(TypeHTTP)
+	if strings.Contains(redacted, "p@ss#word") {
+		t.Errorf("RedactedString filtró la contraseña en texto claro: %s", redacted)
+	}
+	if !strings.Contains(redacted, "***") {
+		t.Errorf("RedactedString no contiene máscara '***': %s", redacted)
+	}
+
+	// Probar WithEnvProxy
+	os.Setenv("TEST_HTTP_PROXY", rawURL)
+	defer os.Unsetenv("TEST_HTTP_PROXY")
+
+	sess, err := NewSession(Default(), WithEnvProxy("TEST_HTTP_PROXY"))
+	if err != nil {
+		t.Fatalf("NewSession con WithEnvProxy falló: %v", err)
+	}
+	defer sess.Close()
+
+	if sess.RedactedProxyURL() != redacted {
+		t.Errorf("sess.RedactedProxyURL() esperado %q, got %q", redacted, sess.RedactedProxyURL())
+	}
+}
+
+func TestAudit_Context_HeaderCoherence(t *testing.T) {
+	engine := NewEngine()
+	chromeSet := ChromeLayoutSet
+
+	// Contexto Documento (navegación top-level)
+	ctxDoc := Context{
+		Method:    "GET",
+		Authority: "example.com",
+		Scheme:    "https",
+		Path:      "/",
+	}
+	hDoc := engine.Build(chromeSet.Get(KindDocument), ctxDoc)
+	if len(hDoc["sec-fetch-user"]) == 0 || hDoc["sec-fetch-user"][0] != "?1" {
+		t.Errorf("KindDocument debe enviar sec-fetch-user: ?1")
+	}
+	if len(hDoc["sec-fetch-dest"]) == 0 || hDoc["sec-fetch-dest"][0] != "document" {
+		t.Errorf("KindDocument debe enviar sec-fetch-dest: document")
+	}
+
+	// Contexto XHR (fetch/API)
+	ctxXHR := Context{
+		Method:    "POST",
+		Authority: "example.com",
+		Scheme:    "https",
+		Path:      "/api/v1/auth",
+	}
+	hXHR := engine.Build(chromeSet.Get(KindXHR), ctxXHR)
+	if len(hXHR["sec-fetch-user"]) != 0 {
+		t.Errorf("KindXHR NUNCA debe enviar sec-fetch-user")
+	}
+	if len(hXHR["sec-fetch-dest"]) == 0 || hXHR["sec-fetch-dest"][0] != "empty" {
+		t.Errorf("KindXHR debe enviar sec-fetch-dest: empty")
+	}
+	if len(hXHR["sec-fetch-mode"]) == 0 || hXHR["sec-fetch-mode"][0] != "cors" {
+		t.Errorf("KindXHR debe enviar sec-fetch-mode: cors")
+	}
+}
+
+func TestAudit_Classifier_403NoInfiniteLoop(t *testing.T) {
+	classifier := retry.NewDefaultClassifier()
+	engine := retry.New(retry.RetryConfig{
+		MaxAttempts: 3,
+		WaitMin:     10 * time.Millisecond,
+		WaitMax:     50 * time.Millisecond,
+	}, classifier)
+
+	// 1. 403 sin keywords de WAF (lógica de negocio / permisos normales)
+	// DEBE terminar inmediatamente sin retry
+	decBusiness := engine.Decide(1, retry.Signal{
+		StatusCode: 403,
+		Method:     "GET",
+		BodySample: []byte(`{"error":"insufficient_role_permissions"}`),
+	})
+	if decBusiness.Retry {
+		t.Errorf("403 de lógica de negocio no debe reintentar")
+	}
+	if decBusiness.Class != retry.ClassBusinessLogic {
+		t.Errorf("esperado ClassBusinessLogic, got %v", decBusiness.Class)
+	}
+
+	// 2. 403 con bloqueo de WAF/Cloudflare
+	// Reintenta con rotación pero se detiene al alcanzar MaxAttempts (sin bucle infinito)
+	decWAF1 := engine.Decide(1, retry.Signal{
+		StatusCode: 403,
+		Method:     "GET",
+		BodySample: []byte(`<title>Attention Required! | Cloudflare</title>`),
+	})
+	if !decWAF1.Retry {
+		t.Errorf("intento 1 con bloqueo WAF debe reintentar con rotación")
+	}
+	if decWAF1.Action != retry.ActionRotateProxy {
+		t.Errorf("esperado ActionRotateProxy en bloqueo WAF")
+	}
+
+	// Al alcanzar intento 3 (MaxAttempts = 3), se agota y se detiene
+	decWAFMax := engine.Decide(3, retry.Signal{
+		StatusCode: 403,
+		Method:     "GET",
+		BodySample: []byte(`<title>Attention Required! | Cloudflare</title>`),
+	})
+	if decWAFMax.Retry {
+		t.Errorf("al alcanzar MaxAttempts NUNCA debe continuar reintentando (bucle infinito prevenido)")
+	}
+}
+
+func TestAudit_SanitizeURL_QueryParamRedaction(t *testing.T) {
+	rawURL := "https://api.example.com/v1/login?user=admin&password=SuperSecret123&token=abc-xyz&redirect=https://home"
+	sanitized := sanitizeURL(rawURL)
+
+	if strings.Contains(sanitized, "SuperSecret123") {
+		t.Errorf("sanitizeURL no ocultó el parámetro password: %s", sanitized)
+	}
+	if strings.Contains(sanitized, "abc-xyz") {
+		t.Errorf("sanitizeURL no ocultó el parámetro token: %s", sanitized)
+	}
+	if !strings.Contains(sanitized, "password=%5BREDACTED%5D") && !strings.Contains(sanitized, "password=[REDACTED]") {
+		t.Errorf("parámetro password no fue reemplazado por [REDACTED]: %s", sanitized)
+	}
+}
+
+func TestAudit_CookieJar_ConnectedToTLSClientAdapter(t *testing.T) {
+	jar := NewJAR(CookieConfig{})
+	adapter := NewTLSClientAdapter(jar)
+
+	// Simular SetCookies desde redirección interna
+	adapter.SetCookies(nil, nil) // no-op safe
+	reqURL, _ := http.NewRequest("GET", "https://auth.example.com/login", nil)
+	adapter.SetCookies(reqURL.URL, []*fhttp.Cookie{
+		{Name: "session_token", Value: "token_12345"},
+	})
+
+	cookies := adapter.Cookies(reqURL.URL)
+	if len(cookies) != 1 || cookies[0].Value != "token_12345" {
+		t.Fatalf("TLSClientAdapter no persistió la cookie en el Jar: %+v", cookies)
+	}
+}
+
+func TestAudit_SessionIsolation_SeparateJars(t *testing.T) {
+	cfg := Default()
+	sess1, err := NewSession(cfg)
+	if err != nil {
+		t.Fatalf("error sess1: %v", err)
+	}
+	defer sess1.Close()
+
+	sess2, err := NewSession(cfg)
+	if err != nil {
+		t.Fatalf("error sess2: %v", err)
+	}
+	defer sess2.Close()
+
+	// Inyectar cookie en sess1
+	sess1.Cookies().AddManual("example.com", "/", Cookie{Name: "user_a", Value: "111"})
+
+	// Verificar que sess2 NO tiene la cookie de sess1
+	s2Cookies := sess2.Cookies().CookiesFor("example.com", "/", true)
+	if len(s2Cookies) != 0 {
+		t.Errorf("aislamiento violado: sess2 heredó cookies de sess1: %+v", s2Cookies)
+	}
+
+	// Verificar StickyID distintos
+	if sess1.StickyID() == sess2.StickyID() {
+		t.Errorf("sess1 y sess2 no deben tener el mismo StickyID")
 	}
 }

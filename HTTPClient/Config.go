@@ -97,6 +97,7 @@ type ProxyConfig struct {
 }
 
 type TransportConfig struct {
+	InsecureSkipVerify     bool // false por defecto: valida certificados TLS contra CAs raíz
 	MaxResponseBodyBytes   int64
 	RequestTimeout         time.Duration
 	DialTimeout            time.Duration

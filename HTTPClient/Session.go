@@ -3,6 +3,7 @@ package HTTPClient
 
 import (
 	"context"
+	"os"
 	"fmt"
 	"net/url"
 	"sort"
@@ -73,6 +74,7 @@ type sessionParams struct {
 	classifier     retry.Classifier
 	factory        Factory
 	proxyRaw       []string
+	proxyEntry     *Entry
 	proxyPool      *Pool
 	connMgr        *ConnectionManager
 	profileSpec    *Profiles.ProfileSpec // nil = usa ProfileManager o sistema legacy
@@ -110,6 +112,34 @@ func WithClassifier(c retry.Classifier) Option {
 
 func WithTransportFactory(f Factory) Option {
 	return func(p *sessionParams) { p.factory = f }
+}
+
+// WithProxyURL configura un proxy HTTP estático a partir de una URL completa (ej. http://user:pass@host:port).
+func WithProxyURL(rawURL string) Option {
+	return func(p *sessionParams) {
+		if rawURL == "" {
+			return
+		}
+		entry, err := ParseProxyURL(rawURL)
+		if err == nil {
+			p.proxyEntry = &entry
+		}
+	}
+}
+
+// WithEnvProxy configura el proxy leyendo la URL desde una variable de entorno
+// (por defecto "HTTP_PROXY_URL" si no se proporciona ninguna clave).
+// Si la variable está vacía o no existe, la sesión opera en conexión directa.
+func WithEnvProxy(envKey ...string) Option {
+	key := "HTTP_PROXY_URL"
+	if len(envKey) > 0 && envKey[0] != "" {
+		key = envKey[0]
+	}
+	val := strings.TrimSpace(os.Getenv(key))
+	if val == "" {
+		return func(p *sessionParams) {}
+	}
+	return WithProxyURL(val)
 }
 
 func WithProxies(rawProxies []string) Option {
@@ -198,10 +228,17 @@ func NewSession(cfg *Config, opts ...Option) (*Session, error) {
 	var pool *Pool
 	if params.proxyPool != nil {
 		pool = params.proxyPool
-	} else if cfg.Proxy.Enabled && len(params.proxyRaw) > 0 {
+	} else if len(params.proxyRaw) > 0 {
+		cfg.Proxy.Enabled = true
 		pool, err = NewPool(params.proxyRaw, cfg.Proxy)
 		if err != nil {
 			return nil, fmt.Errorf("browser: configurando proxy pool: %w", err)
+		}
+	} else if params.proxyEntry != nil {
+		cfg.Proxy.Enabled = true
+		pool, err = NewPool([]string{params.proxyEntry.String(TypeHTTP)}, cfg.Proxy)
+		if err != nil {
+			return nil, fmt.Errorf("browser: configurando proxy entry: %w", err)
 		}
 	}
 
@@ -524,6 +561,16 @@ func (s *Session) ProxyURL() string {
 		return ""
 	}
 	return s.currentProxy.String(proxyTypeFrom(s.proxyPool))
+}
+
+// RedactedProxyURL retorna la URL del proxy con la contraseña enmascarada para observabilidad segura.
+func (s *Session) RedactedProxyURL() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.currentProxy == nil {
+		return ""
+	}
+	return s.currentProxy.RedactedString(proxyTypeFrom(s.proxyPool))
 }
 
 // SetGeoCountry actualiza el proxy de la sesión para enrutar el tráfico a través del país especificado.
@@ -1155,7 +1202,7 @@ func (s *Session) debugLog(spec Spec, result *Result) {
 
 	// 1. [fecha] POST →  https://...  (color cyan)
 	cCyan := color.New(color.FgCyan, color.Bold)
-	cCyan.Printf("[%s] %s →  %s\n", dateStr, method, spec.URL)
+	cCyan.Printf("[%s] %s →  %s\n", dateStr, method, sanitizeURL(spec.URL))
 
 	// 2. [fecha] PROXY → http://xxx:xxx@xxx:xx [200]
 	// si en caso no se usa proxy solo seria NO PROXY [200 (color verde para status code buenos y color rojo para status code malos)]
@@ -1167,7 +1214,7 @@ func (s *Session) debugLog(spec Spec, result *Result) {
 		if s.proxyPool != nil {
 			proxyType = s.proxyPool.Type()
 		}
-		proxyDisplay = s.currentProxy.String(proxyType)
+		proxyDisplay = s.currentProxy.RedactedString(proxyType)
 	}
 
 	fmt.Printf("[%s] PROXY → %s ", dateStr, proxyDisplay)
@@ -1268,7 +1315,9 @@ func (s *Session) debugLog(spec Spec, result *Result) {
 			} else {
 				val = req.Header.Get(k)
 			}
-			if strings.EqualFold(k, "x-session-id") {
+			if isSensitiveHeader(k) {
+				val = "[REDACTED]"
+			} else if strings.EqualFold(k, "x-session-id") {
 				if len(val) > 8 {
 					val = val[:4] + "***" + val[len(val)-4:]
 				} else if len(val) > 0 {
@@ -1333,9 +1382,18 @@ func (s *Session) debugLog(spec Spec, result *Result) {
 	// 4. [Send Cookies] (este lo pones de color amarillo y todo su contenido recibido)
 	cYellowBold := color.New(color.FgYellow, color.Bold)
 	cYellow := color.New(color.FgYellow)
-	cYellowBold.Println("[Send Cookies]")
+	cYellowBold.Println("[Send Cookies (names only)]")
 	if sendCookies != "" {
-		cYellow.Println(sendCookies)
+		pairs := strings.Split(sendCookies, "; ")
+		var maskedPairs []string
+		for _, p := range pairs {
+			if idx := strings.Index(p, "="); idx != -1 {
+				maskedPairs = append(maskedPairs, p[:idx]+"=[REDACTED]")
+			} else {
+				maskedPairs = append(maskedPairs, p+"=[REDACTED]")
+			}
+		}
+		cYellow.Println(strings.Join(maskedPairs, "; "))
 	}
 	fmt.Println()
 
@@ -1373,10 +1431,10 @@ func (s *Session) debugLog(spec Spec, result *Result) {
 	fmt.Println()
 
 	// [Cookies Recivied] (este lo pones de color amarillo y todo su contenido recibido)
-	cYellowBold.Println("[Cookies Recivied]")
+	cYellowBold.Println("[Cookies Recivied (values redacted)]")
 	if len(recvCookies) > 0 {
 		for _, ck := range recvCookies {
-			cYellow.Println(ck)
+			cYellow.Println(maskSetCookie(ck))
 		}
 	}
 	fmt.Println()
@@ -1408,3 +1466,45 @@ func CountryFromContext(ctx context.Context) string {
 }
 
 
+
+func sanitizeURL(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	q := u.Query()
+	sensitiveParams := []string{"password", "pass", "pwd", "token", "secret", "api_key", "apikey", "auth", "credential", "signature"}
+	for param := range q {
+		lowerParam := strings.ToLower(param)
+		for _, sens := range sensitiveParams {
+			if strings.Contains(lowerParam, sens) {
+				q.Set(param, "[REDACTED]")
+				break
+			}
+		}
+	}
+	u.RawQuery = q.Encode()
+	return u.String()
+}
+
+func isSensitiveHeader(name string) bool {
+	lower := strings.ToLower(name)
+	return strings.Contains(lower, "authorization") ||
+		strings.Contains(lower, "cookie") ||
+		strings.Contains(lower, "proxy-authorization") ||
+		strings.Contains(lower, "x-api-key") ||
+		strings.Contains(lower, "token") ||
+		strings.Contains(lower, "secret")
+}
+
+func maskSetCookie(raw string) string {
+	parts := strings.Split(raw, ";")
+	if len(parts) == 0 {
+		return raw
+	}
+	nv := strings.TrimSpace(parts[0])
+	if idx := strings.Index(nv, "="); idx != -1 {
+		parts[0] = nv[:idx] + "=[REDACTED]"
+	}
+	return strings.Join(parts, ";")
+}

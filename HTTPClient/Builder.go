@@ -108,7 +108,7 @@ func (b *Builder) Build(spec Spec, cookieHeader string) (*fhttp.Request, error) 
 
 	isOkHttp := strings.Contains(strings.ToLower(ua), "okhttp")
 	acceptLang := b.id.AcceptLanguage
-	acceptEncoding := "gzip, deflate, br, zstd"
+	acceptEncoding := "gzip, deflate, br"
 	if isOkHttp {
 		secUA = ""
 		secMobile = ""

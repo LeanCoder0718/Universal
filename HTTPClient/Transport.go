@@ -48,12 +48,19 @@ func (TLSClientFactory) New(p Params) (Client, error) {
 	options := []tlsclient.HttpClientOption{
 		tlsclient.WithTimeoutSeconds(timeoutSec),
 		tlsclient.WithClientProfile(p.TLSProfile),
-		tlsclient.WithInsecureSkipVerify(),
 		tlsclient.WithTransportOptions(buildTransportOptions(p.Transport)),
 		tlsclient.WithDialer(net.Dialer{
 			Timeout:   p.Transport.DialTimeout,
 			KeepAlive: p.Transport.KeepAlive,
 		}),
+	}
+
+	if p.Transport.InsecureSkipVerify {
+		options = append(options, tlsclient.WithInsecureSkipVerify())
+	}
+
+	if p.Jar != nil {
+		options = append(options, tlsclient.WithCookieJar(NewTLSClientAdapter(p.Jar)))
 	}
 
 	switch p.Protocol {
