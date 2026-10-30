@@ -300,6 +300,10 @@ func (cm *ConnectionManager) Stats() (active int64, created, reused uint64) {
 }
 
 // applyCountryToUsername reemplaza el tag de país en usernames usando el enrutador regional universal.
+// Si ActiveApplyGeo es falso (Opción 4: proxies directos), mantiene el username intacto.
 func applyCountryToUsername(user, countryCode string) string {
+	if !GeoRoute.ActiveApplyGeo || user == "" {
+		return user
+	}
 	return GeoRoute.ApplyCountryToUsername(user, countryCode)
 }

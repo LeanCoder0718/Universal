@@ -140,3 +140,39 @@ func TestApplyCountryToUsername_RevertToGeneric(t *testing.T) {
 		}
 	}
 }
+
+// TestActiveApplyGeoFalse_PreservesOriginalProxyTags valida que cuando ActiveApplyGeo es false (Opción 4),
+// NUNCA se altere, limpie ni elimine ningún tag existente en la proxy cargada.
+func TestActiveApplyGeoFalse_PreservesOriginalProxyTags(t *testing.T) {
+	orig := ActiveApplyGeo
+	defer func() { ActiveApplyGeo = orig }()
+	ActiveApplyGeo = false
+
+	raw := "unlimited.proxiware.com:1337:rzP71UVQeRda-country-mx:PEpvpiSMsj77VsFV"
+	p, err := ParseProxy(raw)
+	if err != nil {
+		t.Fatalf("ParseProxy error: %v", err)
+	}
+
+	// 1. ApplyCountryToUsername con "XX" debe mantener el tag original intacto
+	got := ApplyCountryToUsername(p.Username, "XX")
+	if got != "rzP71UVQeRda-country-mx" {
+		t.Errorf("ApplyCountryToUsername want rzP71UVQeRda-country-mx, got %q", got)
+	}
+
+	// 2. CleanCountryFromUsername debe mantener el tag original intacto
+	gotClean := CleanCountryFromUsername(p.Username)
+	if gotClean != "rzP71UVQeRda-country-mx" {
+		t.Errorf("CleanCountryFromUsername want rzP71UVQeRda-country-mx, got %q", gotClean)
+	}
+
+	// 3. TemplateProvider.Transform debe devolver el proxy String completo intacto
+	prov := NewTemplateProvider(DefaultCRProviderConfig())
+	transformed, err := prov.Transform(p, "XX")
+	if err != nil {
+		t.Fatalf("Transform error: %v", err)
+	}
+	if transformed != raw {
+		t.Errorf("Transform want %q, got %q", raw, transformed)
+	}
+}

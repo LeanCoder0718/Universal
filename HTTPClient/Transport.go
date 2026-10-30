@@ -1,4 +1,4 @@
-﻿package HTTPClient
+package HTTPClient
 
 import (
 	"fmt"
@@ -48,7 +48,7 @@ func (TLSClientFactory) New(p Params) (Client, error) {
 	options := []tlsclient.HttpClientOption{
 		tlsclient.WithTimeoutSeconds(timeoutSec),
 		tlsclient.WithClientProfile(p.TLSProfile),
-		tlsclient.WithCookieJar(NewTLSClientAdapter(p.Jar)),
+		tlsclient.WithInsecureSkipVerify(),
 		tlsclient.WithTransportOptions(buildTransportOptions(p.Transport)),
 		tlsclient.WithDialer(net.Dialer{
 			Timeout:   p.Transport.DialTimeout,

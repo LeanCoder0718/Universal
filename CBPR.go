@@ -421,7 +421,17 @@ func OpenProxy(proxyType string) ([]string, error) {
 			fmt.Printf("  [%s] %s\n", Red("4"), WhiteColor("No modificar proxies (usar tal como están)"))
 			fmt.Println()
 
-			choice := Utils.ReadInt(Red(" → ")+WhiteColor("Selecciona una opción [1]: "), 1)
+			var choice int
+			for {
+				choice = Utils.ReadInt(Red(" → ")+WhiteColor("Selecciona una opción [1-4, Default: 1]: "), 1)
+				if choice == 44 { // Protección contra doble pulsación accidental del 4 en teclado numérico
+					choice = 4
+				}
+				if choice >= 1 && choice <= 4 {
+					break
+				}
+				fmt.Printf(" %s Por favor selecciona una opción válida entre 1 y 4.\n", Red("[!]"))
+			}
 
 			var providerCfg GeoRoute.ProxyProviderConfig
 			var applyGeo bool = true
@@ -483,7 +493,7 @@ func OpenProxy(proxyType string) ([]string, error) {
 				fmt.Println()
 				fmt.Printf(" %s %s (%s)\n",
 					LimeGreen("[GeoRoute]"),
-					WhiteColor("Modo sin adaptación regional (proxies directos)"),
+					WhiteColor("Modo sin adaptación regional (proxies directos tal cual, tags preservados al 100%)"),
 					OrangeCo(fmt.Sprintf("%d proxies cargados", len(proxyList))),
 				)
 			}

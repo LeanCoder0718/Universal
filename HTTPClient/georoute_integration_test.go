@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 	"testing"
+
+	"github.com/LeanCoder0718/Universal/GeoRoute"
 )
 
 // TestSession_GeoRouteProxyTransitionToGeneric valida que SetGeoCountry conmute a proxies
@@ -146,5 +148,58 @@ func TestSession_DoWithContextCountry(t *testing.T) {
 	displayXX := sess.ProxyDisplay()
 	if displayXX != "user1" {
 		t.Errorf("ProxyDisplay = %q, want clean base user 'user1' from context XX", displayXX)
+	}
+}
+
+// TestSession_Option4_PreservesTaggedProxyExactly valida que con GeoRoute.ActiveApplyGeo = false (Opción 4),
+// una proxy cargada con tag explícito (ej: rzP71UVQeRda-country-mx) mantenga su tag intacto en todas las peticiones.
+func TestSession_Option4_PreservesTaggedProxyExactly(t *testing.T) {
+	orig := GeoRoute.ActiveApplyGeo
+	defer func() { GeoRoute.ActiveApplyGeo = orig }()
+	GeoRoute.ActiveApplyGeo = false
+
+	rawProxy := "unlimited.proxiware.com:1337:rzP71UVQeRda-country-mx:PEpvpiSMsj77VsFV"
+	pool, err := NewPool([]string{rawProxy}, ProxyConfig{Enabled: true, Mode: ModeRotating})
+	if err != nil {
+		t.Fatalf("error creando pool: %v", err)
+	}
+
+	cfg := Default()
+	sess, err := NewSession(cfg,
+		WithProxyPool(pool),
+		WithTransportFactory(&testLoopbackFactory{}),
+	)
+	if err != nil {
+		t.Fatalf("error creando sesión: %v", err)
+	}
+	defer sess.Close()
+
+	// 1. Verificar que al inicializar la sesión el proxy tenga su tag intacto
+	if sess.ProxyDisplay() != "rzP71UVQeRda-country-mx" {
+		t.Errorf("ProxyDisplay want rzP71UVQeRda-country-mx, got %q", sess.ProxyDisplay())
+	}
+
+	// 2. Intentar SetGeoCountry con cualquier país ("ES", "XX", etc.) -> NO debe mutar
+	if err := sess.SetGeoCountry("ES"); err != nil {
+		t.Fatalf("SetGeoCountry error: %v", err)
+	}
+	if sess.ProxyDisplay() != "rzP71UVQeRda-country-mx" {
+		t.Errorf("ProxyDisplay after SetGeoCountry(ES) want rzP71UVQeRda-country-mx, got %q", sess.ProxyDisplay())
+	}
+
+	// 3. Petición Do con Spec.Country = "XX" -> NO debe eliminar el tag -country-mx
+	specXX := Spec{
+		Method:  "GET",
+		URL:     "http://example.com/check",
+		Country: "XX",
+	}
+	res, err := sess.Do(context.Background(), specXX)
+	if err != nil {
+		t.Fatalf("Do error: %v", err)
+	}
+	res.Release()
+
+	if sess.ProxyDisplay() != "rzP71UVQeRda-country-mx" {
+		t.Errorf("ProxyDisplay after Do(specXX) want rzP71UVQeRda-country-mx, got %q", sess.ProxyDisplay())
 	}
 }

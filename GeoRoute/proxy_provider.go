@@ -294,7 +294,13 @@ func (t *TemplateProvider) Name() string {
 
 // Transform transforma el username de forma estructural SIN tocar host, port ni password.
 // Si el país es UNKNOWN o vacío, entrega el proxy GENERAL con BaseUsername limpio.
+// Si ActiveApplyGeo es falso (Opción 4: proxies directos), entrega el proxy original tal cual sin tocar nada.
 func (t *TemplateProvider) Transform(proxy ParsedProxy, country CountryCode) (string, error) {
+	// 0. Caso: Adaptación regional desactivada (Opción 4) -> entregar proxy tal cual
+	if !ActiveApplyGeo {
+		return proxy.String(), nil
+	}
+
 	// 1. Caso: Proxy sin autenticación -> no hay username que regionalizar
 	if proxy.BaseUsername == "" && proxy.Password == "" {
 		return proxy.String(), nil

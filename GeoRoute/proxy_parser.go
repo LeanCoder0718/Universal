@@ -209,9 +209,10 @@ func ExtractCountryFromUsername(user string) (detectedRegion string, prefixStr s
 
 // CleanCountryFromUsername remueve cualquier tag regional existente del username,
 // devolviendo el usuario base limpio para proxies genéricos por defecto.
+// Si ActiveApplyGeo es falso (Opción 4: proxies directos), preserva el username intacto tal cual.
 func CleanCountryFromUsername(user string) string {
-	if user == "" {
-		return ""
+	if !ActiveApplyGeo || user == "" {
+		return user
 	}
 	tag, prefixStr, suffixStr, _, found := ExtractCountryFromUsername(user)
 	if found && tag != "" {

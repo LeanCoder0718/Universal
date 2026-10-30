@@ -1,4 +1,4 @@
-﻿// Package HTTPClient — gestión de gateways de proxy SIN circuit breaker.
+// Package HTTPClient — gestión de gateways de proxy SIN circuit breaker.
 //
 // Caso de uso objetivo: 1 (o pocos) endpoints residenciales rotativos
 // compartidos por cientos de goroutines. Un timeout en la goroutine B
@@ -431,8 +431,9 @@ func NewStickyID() string { return uuid.NewString() }
 
 // SetGeoCountry reemplaza dinámicamente el código de país en los usernames
 // de todos los proxy entries usando el enrutador regional universal.
+// Si ActiveApplyGeo es falso (Opción 4: proxies directos), no modifica ningún proxy.
 func (p *Pool) SetGeoCountry(countryCode string) bool {
-	if countryCode == "" {
+	if !GeoRoute.ActiveApplyGeo || countryCode == "" {
 		return false
 	}
 

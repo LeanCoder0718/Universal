@@ -108,11 +108,13 @@ func (b *Builder) Build(spec Spec, cookieHeader string) (*fhttp.Request, error) 
 
 	isOkHttp := strings.Contains(strings.ToLower(ua), "okhttp")
 	acceptLang := b.id.AcceptLanguage
+	acceptEncoding := "gzip, deflate, br, zstd"
 	if isOkHttp {
 		secUA = ""
 		secMobile = ""
 		secPlatform = ""
 		acceptLang = ""
+		acceptEncoding = "gzip"
 	}
 
 	ctx := Context{
@@ -126,7 +128,7 @@ func (b *Builder) Build(spec Spec, cookieHeader string) (*fhttp.Request, error) 
 		SecChUAPlatform: secPlatform,
 		AcceptLanguage:  acceptLang,
 		ContentType:     spec.ContentType,
-		AcceptEncoding:  "gzip, deflate, br, zstd",
+		AcceptEncoding:  acceptEncoding,
 		Cookie:          cookieHeader,
 		Extra:           spec.Extra,
 	}
