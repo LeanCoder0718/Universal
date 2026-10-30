@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -96,6 +97,7 @@ func UpdateLeanCoderProjects() {
 		}
 
 		if len(reposToSync) == 0 {
+			checkGoModuleUpdate()
 			return
 		}
 
@@ -120,4 +122,94 @@ func UpdateLeanCoderProjects() {
 			}
 		}
 	})
+}
+
+// checkGoModuleUpdate se ejecuta cuando el proyecto se importa como dependencia externa de Go
+// (en pkg/mod, sin repositorio .git local). Consulta directamente GitHub via git ls-remote
+// y compara el commit remoto con la versión compilada en el binario.
+func checkGoModuleUpdate() {
+	var currentCommit string
+
+	// 1. Intentar leer desde la metadata del build de Go
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, dep := range info.Deps {
+			if strings.Contains(dep.Path, "LeanCoder0718/Universal") {
+				parts := strings.Split(dep.Version, "-")
+				if len(parts) > 0 {
+					currentCommit = parts[len(parts)-1]
+				}
+				break
+			}
+		}
+	}
+
+	// 2. Fallback: extraer la versión del directorio en pkg/mod (ej: ...!universal@v0.0.0-20261030205929-03007bf345cb)
+	if currentCommit == "" {
+		if _, currentFile, _, ok := runtime.Caller(0); ok {
+			dir := filepath.Dir(currentFile)
+			if idx := strings.Index(dir, "@"); idx != -1 {
+				verPart := dir[idx+1:]
+				parts := strings.Split(verPart, "-")
+				if len(parts) > 0 {
+					cleanEnd := strings.Split(parts[len(parts)-1], string(filepath.Separator))[0]
+					if len(cleanEnd) >= 7 {
+						currentCommit = cleanEnd
+					}
+				}
+			}
+		}
+	}
+
+	PrintStepDelimiter()
+	fmt.Println(Red(" → "), WhiteColor("VERIFICANDO ACTUALIZACIONES"))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "git", "ls-remote", "https://github.com/LeanCoder0718/Universal.git", "refs/heads/main")
+	out, err := cmd.Output()
+	if err != nil {
+		fmt.Printf("   %s %s (GitHub): %s\n", OrangeCo("⚠"), "Universal", WhiteColor("Sin conexión a GitHub (continuando...)"))
+		return
+	}
+
+	remoteOutput := strings.TrimSpace(string(out))
+	if remoteOutput == "" {
+		fmt.Printf("   %s %s (GitHub): %s\n", LimeGreen("✔"), "Universal", WhiteColor("Al día"))
+		return
+	}
+
+	remoteCommit := strings.Fields(remoteOutput)[0]
+
+	// Si no se pudo determinar el commit actual o si coinciden con el remoto
+	if currentCommit != "" && (strings.HasPrefix(remoteCommit, currentCommit) || strings.HasPrefix(currentCommit, remoteCommit)) {
+		fmt.Printf("   %s %s (GitHub): %s\n", LimeGreen("✔"), "Universal", WhiteColor("Al día"))
+		return
+	}
+
+	if currentCommit == "" {
+		fmt.Printf("   %s %s (GitHub): %s\n", LimeGreen("✔"), "Universal", WhiteColor("Al día"))
+		return
+	}
+
+	// Hay una versión nueva en GitHub
+	fmt.Printf("   %s %s (GitHub): %s\n", OrangeCo("⚡"), "Universal", LimeGreen("¡Nueva versión disponible en GitHub!"))
+
+	// Si el proyecto que lo ejecuta tiene go.mod, intentar actualizarlo automáticamente
+	if cwd, err := os.Getwd(); err == nil {
+		goModPath := filepath.Join(cwd, "go.mod")
+		if _, err := os.Stat(goModPath); err == nil {
+			fmt.Printf("   %s Descargando última versión de Universal en go.mod...\n", Red("→"))
+			updCtx, updCancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer updCancel()
+			updCmd := exec.CommandContext(updCtx, "go", "get", "-u", "github.com/LeanCoder0718/Universal@main")
+			updCmd.Dir = cwd
+			if updOut, err := updCmd.CombinedOutput(); err == nil {
+				fmt.Printf("   %s %s\n", LimeGreen("✔"), WhiteColor("go.mod actualizado con éxito. Reinicia el programa para aplicar."))
+			} else {
+				_ = updOut
+				fmt.Printf("   %s Para actualizar ejecuta: %s\n", OrangeCo("ℹ"), LimeGreen("go get -u github.com/LeanCoder0718/Universal@main"))
+			}
+		}
+	}
 }
