@@ -936,6 +936,10 @@ func (s *Session) attemptWith(ctx context.Context, st state, spec Spec, attemptN
 	}
 
 	// CRÍTICO: sin esto el ctx no cancela dial/TLS/body.
+	if req.Header.Get("x-tp-proxy") != "" && st.currentProxy != nil {
+		req.Header.Set("x-tp-proxy", s.CurrentProxyString())
+	}
+
 	req = req.WithContext(ctx)
 
 	targetClient := st.client

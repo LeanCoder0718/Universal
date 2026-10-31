@@ -80,7 +80,8 @@ func NewDefaultClassifier() *DefaultClassifier {
 			`code":"throttled`, "Access Denied", "pardon the interruption",
 			"Enable JavaScript", "challenge-platform", "Just a moment",
 			"Attention Required", "_cf_chl", "Incapsula incident",
-			"COUNTRY_BLOCKED", "country blocked",
+			"COUNTRY_BLOCKED", "country blocked", "rdwr", "_event_transid",
+			"Transaction ID:", "Forbidden", "forbidden", "radware",
 		},
 		NetworkStatusSet: map[int]bool{500: true, 502: true, 504: true},
 	}
@@ -146,7 +147,7 @@ func (d *DefaultClassifier) Classify(s Signal) ErrorClass {
 	case s.StatusCode == 451:
 		return ClassBlocked
 	case s.StatusCode == 403:
-		if containsAny(s.BodySample, d.WAFKeywords) {
+		if len(s.BodySample) == 0 || containsAny(s.BodySample, d.WAFKeywords) {
 			return ClassBlocked
 		}
 		return ClassBusinessLogic
