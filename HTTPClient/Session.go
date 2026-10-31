@@ -1382,18 +1382,9 @@ func (s *Session) debugLog(spec Spec, result *Result) {
 	// 4. [Send Cookies] (este lo pones de color amarillo y todo su contenido recibido)
 	cYellowBold := color.New(color.FgYellow, color.Bold)
 	cYellow := color.New(color.FgYellow)
-	cYellowBold.Println("[Send Cookies (names only)]")
+	cYellowBold.Println("[Send Cookies]")
 	if sendCookies != "" {
-		pairs := strings.Split(sendCookies, "; ")
-		var maskedPairs []string
-		for _, p := range pairs {
-			if idx := strings.Index(p, "="); idx != -1 {
-				maskedPairs = append(maskedPairs, p[:idx]+"=[REDACTED]")
-			} else {
-				maskedPairs = append(maskedPairs, p+"=[REDACTED]")
-			}
-		}
-		cYellow.Println(strings.Join(maskedPairs, "; "))
+		cYellow.Println(sendCookies)
 	}
 	fmt.Println()
 
@@ -1431,10 +1422,10 @@ func (s *Session) debugLog(spec Spec, result *Result) {
 	fmt.Println()
 
 	// [Cookies Recivied] (este lo pones de color amarillo y todo su contenido recibido)
-	cYellowBold.Println("[Cookies Recivied (values redacted)]")
+	cYellowBold.Println("[Cookies Recivied]")
 	if len(recvCookies) > 0 {
 		for _, ck := range recvCookies {
-			cYellow.Println(maskSetCookie(ck))
+			cYellow.Println(ck)
 		}
 	}
 	fmt.Println()
@@ -1490,11 +1481,8 @@ func sanitizeURL(rawURL string) string {
 func isSensitiveHeader(name string) bool {
 	lower := strings.ToLower(name)
 	return strings.Contains(lower, "authorization") ||
-		strings.Contains(lower, "cookie") ||
 		strings.Contains(lower, "proxy-authorization") ||
-		strings.Contains(lower, "x-api-key") ||
-		strings.Contains(lower, "token") ||
-		strings.Contains(lower, "secret")
+		strings.Contains(lower, "x-api-key")
 }
 
 func maskSetCookie(raw string) string {
