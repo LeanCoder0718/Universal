@@ -949,7 +949,11 @@ func (s *Session) attemptWith(ctx context.Context, st state, spec Spec, attemptN
 	}
 
 	useProxyOverride := false
-	if spec.UseProxy != nil {
+	isLoopback := u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1" || u.Hostname() == "::1"
+	if isLoopback && (spec.UseProxy == nil || !*spec.UseProxy) {
+		targetProxy = nil
+		useProxyOverride = true
+	} else if spec.UseProxy != nil {
 		if !*spec.UseProxy {
 			targetProxy = nil
 			useProxyOverride = true
