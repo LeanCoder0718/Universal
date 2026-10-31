@@ -1,4 +1,4 @@
-﻿package Workers
+package Workers
 
 import (
 	"fmt"
@@ -267,11 +267,7 @@ func QuickStart(poolSize int, proxies []string, proxyType string, maxRetries int
 	if maxRetries <= 0 {
 		maxRetries = 1
 	}
-	reqAttempts := maxRetries
-	if reqAttempts < 3 {
-		reqAttempts = 3
-	}
-	cfg.Retry.MaxAttempts = reqAttempts
+	cfg.Retry.MaxAttempts = maxRetries
 	cfg.Retry.WaitMin = 100 * time.Millisecond
 	cfg.Retry.WaitMax = 1 * time.Second
 	cfg.Retry.JitterFactor = 0.3
@@ -348,11 +344,7 @@ func QuickStartWithProfile(poolSize int, proxies []string, proxyType string, max
 	if maxRetries <= 0 {
 		maxRetries = 1
 	}
-	reqAttempts2 := maxRetries
-	if reqAttempts2 < 3 {
-		reqAttempts2 = 3
-	}
-	cfg.Retry.MaxAttempts = reqAttempts2
+	cfg.Retry.MaxAttempts = maxRetries
 	cfg.Retry.WaitMin = 100 * time.Millisecond
 	cfg.Retry.WaitMax = 1 * time.Second
 	cfg.Retry.JitterFactor = 0.3
