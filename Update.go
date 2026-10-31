@@ -198,14 +198,25 @@ func checkGoModuleUpdate() {
 	// Si el proyecto que lo ejecuta tiene go.mod, intentar actualizarlo automáticamente
 	if cwd, err := os.Getwd(); err == nil {
 		goModPath := filepath.Join(cwd, "go.mod")
-		if _, err := os.Stat(goModPath); err == nil {
+		if modBytes, err := os.ReadFile(goModPath); err == nil {
+			modContent := string(modBytes)
+			shortRemote := remoteCommit
+			if len(shortRemote) > 12 {
+				shortRemote = shortRemote[:12]
+			}
+			// Si go.mod ya tiene el commit remoto descargado, no volver a correr 'go get'
+			if strings.Contains(modContent, shortRemote) {
+				fmt.Printf("   %s %s\n", LimeGreen("✔"), WhiteColor("go.mod ya está al día. Recompila con 'go build' para actualizar este ejecutable (.exe)."))
+				return
+			}
+
 			fmt.Printf("   %s Descargando última versión de Universal en go.mod...\n", Red("→"))
 			updCtx, updCancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer updCancel()
 			updCmd := exec.CommandContext(updCtx, "go", "get", "-u", "github.com/LeanCoder0718/Universal@main")
 			updCmd.Dir = cwd
 			if updOut, err := updCmd.CombinedOutput(); err == nil {
-				fmt.Printf("   %s %s\n", LimeGreen("✔"), WhiteColor("go.mod actualizado con éxito. Reinicia el programa para aplicar."))
+				fmt.Printf("   %s %s\n", LimeGreen("✔"), WhiteColor("go.mod actualizado con éxito. Recompila ('go build') para aplicar los cambios a este .exe."))
 			} else {
 				_ = updOut
 				fmt.Printf("   %s Para actualizar ejecuta: %s\n", OrangeCo("ℹ"), LimeGreen("go get -u github.com/LeanCoder0718/Universal@main"))
