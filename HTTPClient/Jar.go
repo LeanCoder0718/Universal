@@ -171,6 +171,12 @@ func (j *Jar) SetCookies(reqHost, reqPath string, fcookies []*fhttp.Cookie) {
 	}
 
 	now := time.Now()
+	for k, c := range bucket.cookies {
+		if c.isExpired(now) {
+			delete(bucket.cookies, k)
+		}
+	}
+
 	for _, fc := range fcookies {
 		if fc == nil || fc.Name == "" {
 			continue
@@ -195,8 +201,10 @@ func (j *Jar) SetCookies(reqHost, reqPath string, fcookies []*fhttp.Cookie) {
 			}
 			continue
 		}
-		if len(bucket.cookies) >= j.cfg.MaxCookiesPerDomain && j.cfg.MaxCookiesPerDomain > 0 {
-			evictOldest(bucket)
+		if _, exists := bucket.cookies[key]; !exists {
+			if len(bucket.cookies) >= j.cfg.MaxCookiesPerDomain && j.cfg.MaxCookiesPerDomain > 0 {
+				evictOldest(bucket)
+			}
 		}
 		bucket.cookies[key] = &c
 	}

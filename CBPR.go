@@ -39,30 +39,38 @@ var (
 
 
 func findRemainingComboFiles() []string {
-	var files []string
+	type fileEntry struct {
+		path    string
+		modTime time.Time
+	}
+	var entries []fileEntry
+
 	pattern := filepath.Join("Combos", "Remaining*", "*.txt")
 	matches, _ := filepath.Glob(pattern)
 	for _, m := range matches {
 		if fi, err := os.Stat(m); err == nil && !fi.IsDir() && fi.Size() > 0 {
-			files = append(files, m)
+			entries = append(entries, fileEntry{path: m, modTime: fi.ModTime()})
 		}
 	}
 	combosPattern := filepath.Join("Combos", "*.txt")
 	combosMatches, _ := filepath.Glob(combosPattern)
 	for _, m := range combosMatches {
 		if fi, err := os.Stat(m); err == nil && !fi.IsDir() && fi.Size() > 0 {
-			files = append(files, m)
+			entries = append(entries, fileEntry{path: m, modTime: fi.ModTime()})
 		}
 	}
 
-	sort.Slice(files, func(i, j int) bool {
-		fi, errI := os.Stat(files[i])
-		fj, errJ := os.Stat(files[j])
-		if errI == nil && errJ == nil {
-			return fi.ModTime().After(fj.ModTime())
+	sort.Slice(entries, func(i, j int) bool {
+		if !entries[i].modTime.Equal(entries[j].modTime) {
+			return entries[i].modTime.After(entries[j].modTime)
 		}
-		return files[i] > files[j]
+		return entries[i].path > entries[j].path
 	})
+
+	files := make([]string, len(entries))
+	for i, e := range entries {
+		files[i] = e.path
+	}
 	return files
 }
 
@@ -797,29 +805,30 @@ func LoadComboSliceFromFile(filePath string) ([]string, error) {
 }
 
 func SelectProxy() string {
-	fmt.Println(Red(" →"), "¿Deseas usar proxy?")
-	fmt.Println()
-	fmt.Print(" [", Red("1"), "]", " HTTP\n")
-	fmt.Print(" [", Red("2"), "]", " SOCKS5\n")
-	fmt.Print(" [", Red("3"), "]", " OFF\n")
-	fmt.Println()
-
-	response_string := Utils.ReadString(Red(" → ") + WhiteColor("Opcion [1/2/3, Default: 1]: "))
-	if response_string == "" {
-		response_string = "1"
-	}
-
-	switch response_string {
-	case "1":
-		return "http"
-	case "2":
-		return "socks5"
-	case "3":
-		return "off"
-	default:
+	for {
+		fmt.Println(Red(" →"), "¿Deseas usar proxy?")
 		fmt.Println()
-		fmt.Print(Red("Opción no válida."))
-		time.Sleep(2 * time.Second)
-		return SelectProxy()
+		fmt.Print(" [", Red("1"), "]", " HTTP\n")
+		fmt.Print(" [", Red("2"), "]", " SOCKS5\n")
+		fmt.Print(" [", Red("3"), "]", " OFF\n")
+		fmt.Println()
+
+		response_string := Utils.ReadString(Red(" → ") + WhiteColor("Opcion [1/2/3, Default: 1]: "))
+		if response_string == "" {
+			response_string = "1"
+		}
+
+		switch response_string {
+		case "1":
+			return "http"
+		case "2":
+			return "socks5"
+		case "3":
+			return "off"
+		default:
+			fmt.Println()
+			fmt.Print(Red("Opción no válida."))
+			time.Sleep(1 * time.Second)
+		}
 	}
 }

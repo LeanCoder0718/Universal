@@ -70,17 +70,18 @@ type Session struct {
 type Option func(*sessionParams)
 
 type sessionParams struct {
-	identityOpts   []IdentityOption
-	classifier     retry.Classifier
-	factory        Factory
-	proxyRaw       []string
-	proxyEntry     *Entry
-	proxyPool      *Pool
-	connMgr        *ConnectionManager
-	profileSpec    *Profiles.ProfileSpec // nil = usa ProfileManager o sistema legacy
-	profileManager *Profiles.Manager     // nil = usa ProfileSpec o sistema legacy
+	identityOpts    []IdentityOption
+	classifier      retry.Classifier
+	factory         Factory
+	proxyRaw        []string
+	proxyEntry      *Entry
+	proxyPool       *Pool
+	connMgr         *ConnectionManager
+	profileSpec     *Profiles.ProfileSpec // nil = usa ProfileManager o sistema legacy
+	profileManager  *Profiles.Manager     // nil = usa ProfileSpec o sistema legacy
 	allowedHosts    []string
 	enableSessionID *bool
+	err             error
 }
 
 // WithAllowedSessionHosts restringe la inyección de x-session-id a los hosts/dominios especificados.
@@ -121,9 +122,11 @@ func WithProxyURL(rawURL string) Option {
 			return
 		}
 		entry, err := ParseProxyURL(rawURL)
-		if err == nil {
-			p.proxyEntry = &entry
+		if err != nil {
+			p.err = fmt.Errorf("session: proxy URL inválida %q: %w", sanitizeURL(rawURL), err)
+			return
 		}
+		p.proxyEntry = &entry
 	}
 }
 
@@ -182,6 +185,9 @@ func NewSession(cfg *Config, opts ...Option) (*Session, error) {
 	params := sessionParams{}
 	for _, opt := range opts {
 		opt(&params)
+	}
+	if params.err != nil {
+		return nil, params.err
 	}
 	if params.factory == nil {
 		params.factory = NewFactory()
@@ -760,9 +766,12 @@ func (s *Session) Do(ctx context.Context, spec Spec) (*Result, error) {
 	s.requestCount.Add(1)
 
 	maxAttempts := s.cfg.Retry.MaxAttempts
+	if maxAttempts <= 0 {
+		maxAttempts = 1
+	}
 	var lastResult *Result
 
-	for attempt := 1; maxAttempts <= 0 || attempt <= maxAttempts; attempt++ {
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}

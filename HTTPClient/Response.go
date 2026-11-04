@@ -221,9 +221,6 @@ func (r *Response) decompress() error {
 		return nil
 	}
 
-	r.originalSize = int64(len(r.BodyBytes))
-	buf := GetBuffer()
-
 	var reader io.Reader
 	switch {
 	case strings.Contains(encoding, "gzip"):
@@ -246,12 +243,19 @@ func (r *Response) decompress() error {
 		defer zr.Close()
 		reader = zr
 	default:
-		r.originalSize = 0
 		return nil
 	}
 
+	r.originalSize = int64(len(r.BodyBytes))
+	buf := GetBuffer()
+	success := false
+	defer func() {
+		if !success {
+			PutBuffer(buf)
+		}
+	}()
+
 	if _, err := io.Copy(buf, io.LimitReader(reader, 10*1024*1024)); err != nil {
-		PutBuffer(buf)
 		return fmt.Errorf("response: descomprimiendo: %w", err)
 	}
 
@@ -262,6 +266,7 @@ func (r *Response) decompress() error {
 	r.poolBuf = buf
 	r.BodyBytes = buf.Bytes()
 	r.compressed = true
+	success = true
 	return nil
 }
 
@@ -353,10 +358,49 @@ func (r *Response) ContainsText(text string) bool {
 }
 
 func (r *Response) ContainsTextIgnoreCase(text string) bool {
-	if len(r.BodyBytes) == 0 {
+	if len(r.BodyBytes) == 0 || text == "" {
 		return false
 	}
-	return bytes.Contains(bytes.ToLower(r.BodyBytes), []byte(strings.ToLower(text)))
+	return containsBytesIgnoreCase(r.BodyBytes, text)
+}
+
+// containsBytesIgnoreCase realiza búsqueda case-insensitive sin alocar copias de memoria completas.
+func containsBytesIgnoreCase(b []byte, sub string) bool {
+	if len(sub) == 0 {
+		return true
+	}
+	if len(b) < len(sub) {
+		return false
+	}
+	subLower := strings.ToLower(sub)
+	firstLower := subLower[0]
+	firstUpper := firstLower
+	if firstLower >= 'a' && firstLower <= 'z' {
+		firstUpper = firstLower - 32
+	}
+
+	n := len(subLower)
+	maxI := len(b) - n
+	for i := 0; i <= maxI; i++ {
+		c := b[i]
+		if c == firstLower || c == firstUpper {
+			match := true
+			for j := 1; j < n; j++ {
+				cb := b[i+j]
+				if cb >= 'A' && cb <= 'Z' {
+					cb += 32
+				}
+				if cb != subLower[j] {
+					match = false
+					break
+				}
+			}
+			if match {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (r *Response) ContainsAnyText(texts ...string) bool {

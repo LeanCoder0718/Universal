@@ -110,35 +110,36 @@ func New(cfg *HTTPClient.Config, opts PoolOptions, sessionOpts ...HTTPClient.Opt
 		return nil, err
 	}
 
-	maxRetries := cfg.Retry.MaxAttempts
+	cfgCopy := *cfg
+	maxRetries := cfgCopy.Retry.MaxAttempts
 	if maxRetries <= 0 {
 		maxRetries = 1
 	}
 
 	// Configuración de reintentos por petición (Session.Do) con rotación automática de proxy.
-	if cfg.Retry.MaxAttempts <= 0 {
-		cfg.Retry.MaxAttempts = 3
+	if cfgCopy.Retry.MaxAttempts <= 0 {
+		cfgCopy.Retry.MaxAttempts = 3
 	}
 
 	p := &Pool{
-		cfg:         cfg,
+		cfg:         &cfgCopy,
 		sessionOpts: sessionOpts,
 		maxRetries:  maxRetries,
 	}
-	if cfg.Worker.RateLimitPerHost > 0 {
-		p.limiter = HTTPClient.NewRateLimiter(cfg.Worker.RateLimitPerHost, cfg.Worker.RateLimitBurst)
+	if cfgCopy.Worker.RateLimitPerHost > 0 {
+		p.limiter = HTTPClient.NewRateLimiter(cfgCopy.Worker.RateLimitPerHost, cfgCopy.Worker.RateLimitBurst)
 	}
 
 	maxInFlight := opts.MaxInFlight
 	if maxInFlight <= 0 {
-		maxInFlight = cfg.Worker.PoolSize * 4
+		maxInFlight = cfgCopy.Worker.PoolSize * 4
 		if maxInFlight <= 0 {
 			maxInFlight = 100
 		}
 	}
 	p.sem = make(chan struct{}, maxInFlight)
 
-	lManager, err := HTTPClient.NewLifecycleManager(cfg, maxInFlight, sessionOpts...)
+	lManager, err := HTTPClient.NewLifecycleManager(&cfgCopy, maxInFlight, sessionOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("workers: creando lifecycle manager: %w", err)
 	}
@@ -186,12 +187,11 @@ func (p *Pool) releaseSession(handle *HTTPClient.SessionHandle, execErr error) {
 	if handle == nil {
 		return
 	}
-	if handle.Session != nil {
-		tot, succ, fail, res := handle.Session.Metrics()
-		p.totalReqCount.Add(tot)
-		p.succReqCount.Add(succ)
-		p.failReqCount.Add(fail)
-		p.resetReqCount.Add(res)
+	p.totalReqCount.Add(1)
+	if execErr == nil {
+		p.succReqCount.Add(1)
+	} else {
+		p.failReqCount.Add(1)
 	}
 	p.lifecycle.Release(handle, execErr)
 }

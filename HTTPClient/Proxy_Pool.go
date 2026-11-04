@@ -292,7 +292,7 @@ func (p *Pool) Acquire(ctx context.Context, policy AcquirePolicy) (*ProxyNode, f
 		}
 
 		// Candidato óptimo encontrado
-		node.InFlight++
+		atomic.AddInt32(&node.InFlight, 1)
 		node.LastUsed = now
 		release := p.makeReleaseFunc(node)
 		return node, release, nil
@@ -307,7 +307,7 @@ func (p *Pool) Acquire(ctx context.Context, policy AcquirePolicy) (*ProxyNode, f
 			}
 		}
 		if oldestNode != nil {
-			oldestNode.InFlight++
+			atomic.AddInt32(&oldestNode.InFlight, 1)
 			oldestNode.LastUsed = now
 			release := p.makeReleaseFunc(oldestNode)
 			return oldestNode, release, nil
@@ -321,6 +321,9 @@ func (p *Pool) makeReleaseFunc(node *ProxyNode) func(success bool, err error) {
 	var once sync.Once
 	return func(success bool, err error) {
 		once.Do(func() {
+			if atomic.LoadInt32(&node.InFlight) > 0 {
+				atomic.AddInt32(&node.InFlight, -1)
+			}
 			if success {
 				p.ReportSuccess(node.Entry, 0)
 			} else {
@@ -341,9 +344,6 @@ func (p *Pool) ReportSuccess(e Entry, latency time.Duration) {
 		return
 	}
 
-	if node.InFlight > 0 {
-		node.InFlight--
-	}
 	node.Status = StatusHealthy
 	node.ConsecutiveErr = 0
 	node.TotalSuccess++
@@ -370,9 +370,6 @@ func (p *Pool) ReportFailure(e Entry, err error) {
 		return
 	}
 
-	if node.InFlight > 0 {
-		node.InFlight--
-	}
 	node.TotalFailures++
 	node.ConsecutiveErr++
 }
@@ -385,7 +382,7 @@ func (p *Pool) findNodeLocked(e Entry) *ProxyNode {
 		}
 	}
 	for _, n := range p.nodes {
-		if n.Entry.Host == e.Host {
+		if n.Entry.Host == e.Host && n.Entry.Port == e.Port {
 			return n
 		}
 	}
@@ -405,13 +402,19 @@ func (p *Pool) GetNode(host string) *ProxyNode {
 	return nil
 }
 
-// Gateway elige un endpoint respetando el pool y la salud actual de los nodos.
+// Gateway elige un endpoint respetando el pool y la salud actual de los nodos sin incrementar InFlight.
 func (p *Pool) Gateway() (Entry, error) {
-	node, _, err := p.Acquire(context.Background(), AcquirePolicy{AllowFallback: true})
-	if err != nil {
-		return Entry{}, err
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	n := len(p.nodes)
+	if n == 0 {
+		return Entry{}, ErrEmptyProxyPool
 	}
-	return node.Entry, nil
+	if n == 1 {
+		return p.nodes[0].Entry, nil
+	}
+	idx := int(p.rr.Add(1)-1) % n
+	return p.nodes[idx].Entry, nil
 }
 
 // Resolve obtiene el Entry del proxy tal como fue configurado.

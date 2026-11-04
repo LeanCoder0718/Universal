@@ -14,11 +14,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 	"unicode/utf16"
 	"unicode/utf8"
-	"unsafe"
 )
 
 func UrlEnconde(input string) string {
@@ -559,22 +557,6 @@ func ReadBool(prompt string, defaultVal bool) bool {
 	}
 	return text == "y" || text == "yes" || text == "s" || text == "si" || text == "true" || text == "1"
 }
-
-// ConsoleTitle actualiza el título de la consola de Windows.
-func ConsoleTitle(title string) (int, error) {
-	handle, err := syscall.LoadLibrary("Kernel32.dll")
-	if err != nil {
-		return 0, err
-	}
-	defer syscall.FreeLibrary(handle)
-	proc, err := syscall.GetProcAddress(handle, "SetConsoleTitleW")
-	if err != nil {
-		return 0, err
-	}
-	r, _, err := syscall.SyscallN(proc, uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(title))))
-	return int(r), err
-}
-
 
 // CleanResponse sanitiza y formatea la respuesta para que quede limpia en una sola línea en el archivo .txt
 func CleanResponse(raw string) string {
