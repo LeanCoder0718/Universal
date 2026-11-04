@@ -516,8 +516,6 @@ func PrintStepDelimiter() {
 }
 
 func UIStart() (string, int64, []string, int, string) {
-	UpdateLeanCoderProjects()
-
 	PrintStepDelimiter()
 	Threader := Utils.ReadInt(fmt.Sprintf("%s %s", Red(" →"), "¿Cuantos Hilos o Taks?: "), 1)
 
@@ -544,8 +542,6 @@ func UIStart() (string, int64, []string, int, string) {
 
 // UIStartSlice inicia la interfaz seleccionando proxies y cargando el combo completo como slice []string en memoria.
 func UIStartSlice() ([]string, []string, int, string) {
-	UpdateLeanCoderProjects()
-
 	PrintStepDelimiter()
 	Threader := Utils.ReadInt(fmt.Sprintf("%s %s", Red(" →"), "¿Cuantos Hilos o Taks?: "), 1)
 
