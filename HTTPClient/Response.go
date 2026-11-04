@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/LeanCoder0718/Universal/Utils"
 	"github.com/andybalholm/brotli"
 	fhttp "github.com/bogdanfinn/fhttp"
 )
@@ -108,6 +109,23 @@ func (r *Response) GetStatusText() string { return http.StatusText(r.StatusCode)
 
 func (r *Response) String() string { return string(r.BodyBytes) }
 func (r *Response) Bytes() []byte  { return r.BodyBytes }
+
+// Unescape retorna el cuerpo (Body) desescapando secuencias de escape
+// idéntico a la función Unescape de OpenBullet 2 (\uXXXX, \/, \", \', \\, \n, emojis, etc.).
+func (r *Response) Unescape() string {
+	if r == nil || len(r.BodyBytes) == 0 {
+		return ""
+	}
+	return Utils.UnescapeString(string(r.BodyBytes))
+}
+
+// Unescape retorna el cuerpo del resultado HTTP desescapado idéntico a OpenBullet 2.
+func (res *Result) Unescape() string {
+	if res == nil || res.Response == nil {
+		return ""
+	}
+	return res.Response.Unescape()
+}
 
 func (r *Response) HeaderValue(name string) string {
 	if r.Headers == nil {

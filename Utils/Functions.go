@@ -16,6 +16,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"unicode/utf16"
 	"unicode/utf8"
 	"unsafe"
 )
@@ -31,10 +32,26 @@ var bufferPool = sync.Pool{
 	},
 }
 
-// Función Unescape optimizada con buffer pool acotado
+// Función Unescape desescapa una cadena emulando la función Unescape de OpenBullet 2
+// (basada en Regex.Unescape de .NET). Decodifica secuencias \uXXXX (con soporte para
+// pares subrogados UTF-16 como emojis), \UXXXXXXXX, \xXX, \n, \r, \t, \", \', \\, \/
+// y cualquier carácter precedido por una barra invertida.
 func Unescape(s string) (string, error) {
+	return UnescapeString(s), nil
+}
+
+// UnescapeString desescapa una cadena directamente (estilo OpenBullet 2),
+// sin retornar error, garantizando que el texto se procese limpiamente sin fallos.
+func UnescapeString(s string) string {
+	if !strings.ContainsRune(s, '\\') {
+		return s
+	}
+
 	buf := bufferPool.Get().([]byte)
-	buf = buf[:0] // Reset length
+	buf = buf[:0]
+	if cap(buf) < len(s) {
+		buf = make([]byte, 0, len(s))
+	}
 	defer func() {
 		if cap(buf) <= 128*1024 {
 			bufferPool.Put(buf)
@@ -42,110 +59,151 @@ func Unescape(s string) (string, error) {
 	}()
 
 	for i := 0; i < len(s); {
-		c := s[i]
-		if c != '\\' {
-			r, size := utf8.DecodeRuneInString(s[i:])
-			if r == utf8.RuneError && size == 1 {
-				buf = append(buf, s[i])
-				i++
-			} else {
-				// Convertir rune a bytes y agregar al buffer
-				runeBytes := make([]byte, utf8.RuneLen(r))
-				utf8.EncodeRune(runeBytes, r)
-				buf = append(buf, runeBytes...)
-				i += size
-			}
-			continue
+		nextSlash := strings.IndexByte(s[i:], '\\')
+		if nextSlash == -1 {
+			buf = append(buf, s[i:]...)
+			break
+		}
+		if nextSlash > 0 {
+			buf = append(buf, s[i:i+nextSlash]...)
+			i += nextSlash
 		}
 
+		// s[i] == '\\'
 		i++
 		if i >= len(s) {
-			return "", errors.New("incomplete escape at end of string")
+			buf = append(buf, '\\')
+			break
 		}
 
 		switch s[i] {
 		case 'a':
 			buf = append(buf, '\a')
+			i++
 		case 'b':
 			buf = append(buf, '\b')
+			i++
+		case 'e':
+			buf = append(buf, 0x1b)
+			i++
 		case 'f':
 			buf = append(buf, '\f')
+			i++
 		case 'n':
 			buf = append(buf, '\n')
+			i++
 		case 'r':
 			buf = append(buf, '\r')
+			i++
 		case 't':
 			buf = append(buf, '\t')
+			i++
 		case 'v':
 			buf = append(buf, '\v')
+			i++
 		case '\\':
 			buf = append(buf, '\\')
+			i++
+		case '/':
+			buf = append(buf, '/')
+			i++
 		case '\'':
 			buf = append(buf, '\'')
+			i++
 		case '"':
 			buf = append(buf, '"')
+			i++
 		case 'x':
-			if i+2 >= len(s) {
-				return "", errors.New(`\x escape requires 2 hex digits`)
+			if i+2 < len(s) {
+				if v, err := strconv.ParseUint(s[i+1:i+3], 16, 8); err == nil {
+					buf = append(buf, byte(v))
+					i += 3
+					continue
+				}
 			}
-			h := s[i+1 : i+3]
-			v, err := strconv.ParseUint(h, 16, 8)
-			if err != nil {
-				return "", fmt.Errorf(`invalid \x escape: %w`, err)
+			if i+1 < len(s) {
+				if v, err := strconv.ParseUint(s[i+1:i+2], 16, 8); err == nil {
+					buf = append(buf, byte(v))
+					i += 2
+					continue
+				}
 			}
-			buf = append(buf, byte(v))
-			i += 2
+			buf = append(buf, 'x')
+			i++
 		case 'u':
-			if i+4 >= len(s) {
-				return "", errors.New(`\u escape requires 4 hex digits`)
+			if i+4 < len(s) {
+				if v, err := strconv.ParseUint(s[i+1:i+5], 16, 32); err == nil {
+					r := rune(v)
+					i += 5
+					// Soporte para pares subrogados UTF-16 (surrogate pairs para emojis/astral codes)
+					if utf16.IsSurrogate(r) && r >= 0xD800 && r <= 0xDBFF {
+						if i+5 < len(s) && s[i] == '\\' && (s[i+1] == 'u' || s[i+1] == 'U') {
+							if v2, err2 := strconv.ParseUint(s[i+2:i+6], 16, 32); err2 == nil {
+								r2 := rune(v2)
+								if r2 >= 0xDC00 && r2 <= 0xDFFF {
+									combined := utf16.DecodeRune(r, r2)
+									var runeBytes [utf8.UTFMax]byte
+									n := utf8.EncodeRune(runeBytes[:], combined)
+									buf = append(buf, runeBytes[:n]...)
+									i += 6
+									continue
+								}
+							}
+						}
+					}
+					var runeBytes [utf8.UTFMax]byte
+					n := utf8.EncodeRune(runeBytes[:], r)
+					buf = append(buf, runeBytes[:n]...)
+					continue
+				}
 			}
-			h := s[i+1 : i+5]
-			v, err := strconv.ParseUint(h, 16, 32)
-			if err != nil {
-				return "", fmt.Errorf(`invalid \u escape: %w`, err)
-			}
-			runeBytes := make([]byte, utf8.RuneLen(rune(v)))
-			utf8.EncodeRune(runeBytes, rune(v))
-			buf = append(buf, runeBytes...)
-			i += 4
+			buf = append(buf, 'u')
+			i++
 		case 'U':
-			if i+8 >= len(s) {
-				return "", errors.New(`\U escape requires 8 hex digits`)
+			if i+8 < len(s) {
+				if v, err := strconv.ParseUint(s[i+1:i+9], 16, 32); err == nil {
+					var runeBytes [utf8.UTFMax]byte
+					n := utf8.EncodeRune(runeBytes[:], rune(v))
+					buf = append(buf, runeBytes[:n]...)
+					i += 9
+					continue
+				}
 			}
-			h := s[i+1 : i+9]
-			v, err := strconv.ParseUint(h, 16, 32)
-			if err != nil {
-				return "", fmt.Errorf(`invalid \U escape: %w`, err)
+			buf = append(buf, 'U')
+			i++
+		case 'c':
+			if i+1 < len(s) {
+				ch := s[i+1]
+				if (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') {
+					buf = append(buf, ch&0x1F)
+					i += 2
+					continue
+				}
 			}
-			runeBytes := make([]byte, utf8.RuneLen(rune(v)))
-			utf8.EncodeRune(runeBytes, rune(v))
-			buf = append(buf, runeBytes...)
-			i += 8
+			buf = append(buf, 'c')
+			i++
 		default:
 			if s[i] >= '0' && s[i] <= '7' {
-				j := i
-				end := j
-				for k := 0; k < 3 && end < len(s); k++ {
-					if s[end] < '0' || s[end] > '7' {
-						break
-					}
+				end := i
+				for end < len(s) && end-i < 3 && s[end] >= '0' && s[end] <= '7' {
 					end++
 				}
-				oct := s[j:end]
-				v, err := strconv.ParseUint(oct, 8, 8)
-				if err != nil {
-					return "", fmt.Errorf("invalid octal escape: %w", err)
+				if v, err := strconv.ParseUint(s[i:end], 8, 8); err == nil {
+					buf = append(buf, byte(v))
+					i = end
+					continue
 				}
-				buf = append(buf, byte(v))
-				i = end - 1 // -1 porque se incrementará al final del loop
-			} else {
-				return "", fmt.Errorf("unknown escape sequence: \\%c", s[i])
 			}
+			// Cualquier otro carácter precedido por '\' pierde la barra (ej: \/, \., \-, \?, etc.)
+			r, size := utf8.DecodeRuneInString(s[i:])
+			var runeBytes [utf8.UTFMax]byte
+			n := utf8.EncodeRune(runeBytes[:], r)
+			buf = append(buf, runeBytes[:n]...)
+			i += size
 		}
-		i++
 	}
 
-	return string(buf), nil
+	return string(buf)
 }
 
 // Inicializa writers concurrentes
