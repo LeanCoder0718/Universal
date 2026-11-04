@@ -1443,7 +1443,7 @@ func (s *Session) debugLog(spec Spec, result *Result) {
 	cGreen := color.New(color.FgHiGreen)
 	cGreenBold.Println("[Body]")
 	if resp != nil && len(resp.BodyBytes) > 0 {
-		cGreen.Println(string(resp.BodyBytes))
+		cGreen.Println(resp.Unescape())
 	} else if resp != nil && resp.Err != nil {
 		cRed := color.New(color.FgRed)
 		cRed.Printf("Error: %v\n", resp.Err)
