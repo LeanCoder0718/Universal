@@ -105,6 +105,126 @@ func (r *Response) IsClientError() bool   { return r.StatusCode >= 400 && r.Stat
 func (r *Response) IsServerError() bool   { return r.StatusCode >= 500 }
 func (r *Response) IsRateLimited() bool   { return r.StatusCode == 429 }
 func (r *Response) IsForbidden() bool     { return r.StatusCode == 403 }
+
+// IsBlocked retorna true si la respuesta fue bloqueada por WAF, CDN o proxy (403, 451 o firmas en headers/body).
+func (r *Response) IsBlocked() bool {
+	if r == nil {
+		return false
+	}
+	if r.StatusCode == 403 || r.StatusCode == 451 {
+		return true
+	}
+	return isBlockedResponse(r.Headers, r.BodyBytes)
+}
+
+// IsChallenge retorna true si la respuesta contiene un desafío o pantalla anti-bot (Cloudflare, Datadome, Turnstile, etc.).
+func (r *Response) IsChallenge() bool {
+	if r == nil {
+		return false
+	}
+	return isChallengeResponse(r.Headers, r.BodyBytes)
+}
+
+// IsBlocked retorna true si el resultado fue bloqueado por WAF o CDN.
+func (res *Result) IsBlocked() bool {
+	if res == nil || res.Response == nil {
+		return false
+	}
+	return res.Response.IsBlocked()
+}
+
+// IsChallenge retorna true si el resultado contiene un desafío anti-bot.
+func (res *Result) IsChallenge() bool {
+	if res == nil || res.Response == nil {
+		return false
+	}
+	return res.Response.IsChallenge()
+}
+
+func isBlockedResponse(headers fhttp.Header, body []byte) bool {
+	if headers != nil {
+		for k, vv := range headers {
+			if strings.EqualFold(k, "x-amzn-waf-action") {
+				for _, v := range vv {
+					if strings.Contains(strings.ToLower(v), "block") {
+						return true
+					}
+				}
+			}
+		}
+	}
+	if len(body) == 0 {
+		return false
+	}
+	chunk := body
+	if len(chunk) > 4096 {
+		chunk = chunk[:4096]
+	}
+	lower := strings.ToLower(string(chunk))
+	wafKeywords := []string{
+		"request blocked",
+		"access denied",
+		"country_blocked",
+		"country blocked",
+		`code":"throttled`,
+	}
+	for _, kw := range wafKeywords {
+		if strings.Contains(lower, kw) {
+			return true
+		}
+	}
+	return false
+}
+
+func isChallengeResponse(headers fhttp.Header, body []byte) bool {
+	if headers != nil {
+		for k, vv := range headers {
+			kLower := strings.ToLower(k)
+			for _, v := range vv {
+				vLower := strings.ToLower(v)
+				if kLower == "cf-mitigated" && (strings.Contains(vLower, "challenge") || strings.Contains(vLower, "captcha")) {
+					return true
+				}
+				if kLower == "cf-chl-bypass" {
+					return true
+				}
+				if kLower == "x-amzn-waf-action" && (strings.Contains(vLower, "challenge") || strings.Contains(vLower, "captcha")) {
+					return true
+				}
+				if kLower == "x-datadome" && (strings.Contains(vLower, "protected") || strings.Contains(vLower, "captcha")) {
+					return true
+				}
+			}
+		}
+	}
+	if len(body) == 0 {
+		return false
+	}
+	chunk := body
+	if len(chunk) > 4096 {
+		chunk = chunk[:4096]
+	}
+	lower := strings.ToLower(string(chunk))
+	challengeKeywords := []string{
+		"challenge-platform",
+		"_cf_chl",
+		"just a moment",
+		"attention required",
+		"verifying you are human",
+		"verify you are human",
+		"turnstile",
+		"pardon our interruption",
+		"pardon the interruption",
+		"datadome",
+		"enable javascript and cookies to continue",
+	}
+	for _, kw := range challengeKeywords {
+		if strings.Contains(lower, kw) {
+			return true
+		}
+	}
+	return false
+}
 func (r *Response) GetStatusText() string { return http.StatusText(r.StatusCode) }
 
 func (r *Response) String() string { return string(r.BodyBytes) }

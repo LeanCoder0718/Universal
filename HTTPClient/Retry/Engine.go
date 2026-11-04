@@ -30,7 +30,8 @@ const (
 	ClassBlocked
 	ClassBusinessLogic
 	ClassPermanent
-	ClassCanceled // caller canceló: NUNCA reintentar
+	ClassCanceled  // caller canceló: NUNCA reintentar
+	ClassChallenge // desafío o challenge anti-bot (Cloudflare Turnstile, Just a moment, Datadome, etc.)
 )
 
 type Action int
@@ -48,6 +49,7 @@ const (
 type Signal struct {
 	StatusCode    int
 	NetErr        error
+	Headers       map[string][]string // Cabeceras de respuesta para detección de WAF y mitigación
 	BodySample    []byte
 	Method        string
 	Idempotent    bool // true = el caller autoriza retry aunque no sea GET/HEAD/...
@@ -69,22 +71,85 @@ type Classifier interface {
 }
 
 type DefaultClassifier struct {
-	WAFKeywords      []string
-	NetworkStatusSet map[int]bool
+	ChallengeKeywords []string
+	WAFKeywords       []string
+	NetworkStatusSet  map[int]bool
 }
 
 func NewDefaultClassifier() *DefaultClassifier {
 	return &DefaultClassifier{
+		ChallengeKeywords: []string{
+			"challenge-platform",
+			"_cf_chl",
+			"Just a moment",
+			"Attention Required",
+			"Enable JavaScript",
+			"Verifying you are human",
+			"Verify you are human",
+			"turnstile",
+			"pardon the interruption",
+			"Pardon Our Interruption",
+			"datadome",
+			"Incapsula incident",
+			"radware",
+			"rdwr",
+			"_event_transid",
+		},
 		WAFKeywords: []string{
-			"Too Many Requests", "Request blocked", "CloudFront",
-			`code":"throttled`, "Access Denied", "pardon the interruption",
-			"Enable JavaScript", "challenge-platform", "Just a moment",
-			"Attention Required", "_cf_chl", "Incapsula incident",
-			"COUNTRY_BLOCKED", "country blocked", "rdwr", "_event_transid",
-			"Transaction ID:", "Forbidden", "forbidden", "radware",
+			"Too Many Requests",
+			"Request blocked",
+			"CloudFront",
+			`code":"throttled`,
+			"Access Denied",
+			"COUNTRY_BLOCKED",
+			"country blocked",
+			"Forbidden",
+			"forbidden",
+			"Transaction ID:",
 		},
 		NetworkStatusSet: map[int]bool{500: true, 502: true, 504: true},
 	}
+}
+
+func isChallengeHeader(headers map[string][]string) bool {
+	if len(headers) == 0 {
+		return false
+	}
+	for k, vv := range headers {
+		kLower := strings.ToLower(k)
+		for _, v := range vv {
+			vLower := strings.ToLower(v)
+			if kLower == "cf-mitigated" && (strings.Contains(vLower, "challenge") || strings.Contains(vLower, "captcha")) {
+				return true
+			}
+			if kLower == "cf-chl-bypass" {
+				return true
+			}
+			if kLower == "x-amzn-waf-action" && (strings.Contains(vLower, "challenge") || strings.Contains(vLower, "captcha")) {
+				return true
+			}
+			if kLower == "x-datadome" && (strings.Contains(vLower, "protected") || strings.Contains(vLower, "captcha") || strings.Contains(vLower, "block")) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func isWAFBlockedHeader(headers map[string][]string) bool {
+	if len(headers) == 0 {
+		return false
+	}
+	for k, vv := range headers {
+		kLower := strings.ToLower(k)
+		for _, v := range vv {
+			vLower := strings.ToLower(v)
+			if kLower == "x-amzn-waf-action" && strings.Contains(vLower, "block") {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (d *DefaultClassifier) Classify(s Signal) ErrorClass {
@@ -131,7 +196,20 @@ func (d *DefaultClassifier) Classify(s Signal) ErrorClass {
 		return ClassTransientNetwork
 	}
 
-	// Body incompleto nunca es éxito, aunque el status sea 2xx.
+	// 1. Detección por cabeceras de respuesta (WAF / Anti-Bot)
+	if isChallengeHeader(s.Headers) {
+		return ClassChallenge
+	}
+	if isWAFBlockedHeader(s.Headers) {
+		return ClassBlocked
+	}
+
+	// 2. Detección de pantallas de desafío anti-bot en el cuerpo (incluso si el código es 200 o 503)
+	if containsAny(s.BodySample, d.ChallengeKeywords) {
+		return ClassChallenge
+	}
+
+	// 3. Body incompleto nunca es éxito, aunque el status sea 2xx.
 	if s.StatusCode >= 200 && s.StatusCode < 400 {
 		if s.BodyTruncated || !s.BodyComplete {
 			return ClassTransientNetwork
@@ -148,6 +226,10 @@ func (d *DefaultClassifier) Classify(s Signal) ErrorClass {
 		return ClassBlocked
 	case s.StatusCode == 403:
 		if len(s.BodySample) == 0 || containsAny(s.BodySample, d.WAFKeywords) {
+			return ClassBlocked
+		}
+		// Si es una respuesta HTML a una petición API/XHR suele ser bloqueo de WAF/proxy
+		if containsAny(s.BodySample, []string{"<html", "<!doctype html"}) {
 			return ClassBlocked
 		}
 		return ClassBusinessLogic
@@ -216,7 +298,7 @@ func (e *Engine) Decide(attempt int, s Signal) Decision {
 
 	// No reintentar métodos no idempotentes salvo autorización explícita o cuando el fallo
 	// sea a nivel de transporte/red/proxy/WAF (la petición no se completó en el servidor de destino).
-	if !s.Idempotent && !isIdempotentMethod(s.Method) && class != ClassBlocked && class != ClassTransientNetwork && class != ClassTLSFingerprint {
+	if !s.Idempotent && !isIdempotentMethod(s.Method) && class != ClassBlocked && class != ClassTransientNetwork && class != ClassTLSFingerprint && class != ClassChallenge {
 		return Decision{
 			Class:  class,
 			Action: ActionNone,
@@ -226,9 +308,17 @@ func (e *Engine) Decide(attempt int, s Signal) Decision {
 	}
 
 	action := actionFor(class)
+
+	// Escalamiento adaptativo de bloqueo: si en el intento 1 rotamos de proxy pero el bloqueo/challenge
+	// persiste en intento >= 2, escalar a ActionRebuildIdentity para regenerar completamente la huella
+	// (nuevo perfil TLS, nuevo UA, nuevos headers y jar limpio).
+	if (class == ClassBlocked || class == ClassChallenge) && attempt >= 2 {
+		action = ActionRebuildIdentity
+	}
+
 	wait := e.backoff(attempt, class)
 
-	// Mejora 2: Si el servidor especificó Retry-After, respetarlo si es razonable
+	// Respetar Retry-After si el servidor lo especificó
 	if s.RetryAfter > 0 {
 		if s.RetryAfter <= 60*time.Second {
 			if s.RetryAfter > wait {
@@ -257,8 +347,8 @@ func actionFor(class ErrorClass) Action {
 	switch class {
 	case ClassTLSFingerprint:
 		return ActionRebuildIdentity
-	case ClassBlocked, ClassTransientNetwork:
-		return ActionRotateProxy // Fallos de red o proxy rotan inmediatamente el proxy
+	case ClassBlocked, ClassTransientNetwork, ClassChallenge:
+		return ActionRotateProxy // Fallos de red, proxy o bloqueo rotan inmediatamente el proxy
 	case ClassRateLimited, ClassServerOverloaded:
 		return ActionWaitSameConn
 	default:
@@ -271,7 +361,9 @@ func reasonFor(class ErrorClass) string {
 	case ClassTLSFingerprint:
 		return "tls/handshake error -> rebuild identity"
 	case ClassBlocked:
-		return "WAF/CDN block -> reconnect (same gateway, local retry only)"
+		return "WAF/CDN block -> rotate proxy"
+	case ClassChallenge:
+		return "anti-bot challenge detected -> rotate proxy"
 	case ClassBusinessLogic:
 		return "business-logic error, not a bot signal"
 	case ClassRateLimited:

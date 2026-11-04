@@ -44,6 +44,12 @@ var (
 
 	// ErrNoProxiesAvailable indica que no hay proxies saludables o disponibles según la política de asignación.
 	ErrNoProxiesAvailable = errors.New("httpclient: no proxies available in pool")
+
+	// ErrWAFBlocked indica que la petición fue rechazada por un firewall de aplicaciones web (WAF) o CDN.
+	ErrWAFBlocked = errors.New("httpclient: request blocked by WAF or firewall")
+
+	// ErrChallengeDetected indica que el servidor retornó una página de desafío anti-bot (Cloudflare, Akamai, DataDome, etc.).
+	ErrChallengeDetected = errors.New("httpclient: anti-bot challenge page detected")
 )
 
 // RequestError enriquece un error con el contexto detallado de la petición (intento, proxy, URL).

@@ -480,7 +480,7 @@ func (s *Session) applyAction(gen uint64, action retry.Action, class retry.Error
 	}
 	switch action {
 	case retry.ActionRotateProxy:
-		return s.rotateProxyLocked(class == retry.ClassBlocked)
+		return s.rotateProxyLocked(class == retry.ClassBlocked || class == retry.ClassChallenge)
 	case retry.ActionReconnect:
 		return s.reconnectLocked()
 	case retry.ActionRebuildIdentity:
@@ -1073,6 +1073,7 @@ func (s *Session) attemptWith(ctx context.Context, st state, spec Spec, attemptN
 
 	dec := s.retryEng.Decide(attemptNum, retry.Signal{
 		StatusCode:    resp.StatusCode,
+		Headers:       resp.Headers,
 		BodySample:    sample,
 		Method:        spec.Method,
 		Idempotent:    spec.Idempotent,

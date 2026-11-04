@@ -110,7 +110,7 @@ var ChromeLayoutSet = LayoutSet{
 		},
 		KindXHR: {
 			Kind: KindXHR,
-			Slots: withFirefoxPseudo(
+			Slots: withPseudo(
 				Slot{Name: "sec-ch-ua", Required: false},
 				Slot{Name: "sec-ch-ua-mobile", Required: false},
 				Slot{Name: "sec-ch-ua-platform", Required: false},
@@ -174,7 +174,7 @@ var FirefoxLayoutSet = LayoutSet{
 		},
 		KindXHR: {
 			Kind: KindXHR,
-			Slots: withPseudo(
+			Slots: withFirefoxPseudo(
 				Slot{Name: "user-agent", Required: true},
 				Slot{Name: "accept", Required: true, StaticValue: "*/*"},
 				Slot{Name: "accept-language", Required: true},
