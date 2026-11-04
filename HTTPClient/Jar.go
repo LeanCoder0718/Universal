@@ -14,6 +14,7 @@ package HTTPClient
 import (
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	fhttp "github.com/bogdanfinn/fhttp"
@@ -120,9 +121,10 @@ type domainBucket struct {
 // Jar es el motor de cookies COMPLETO y ÚNICO del proyecto. Sustituye a
 // SharedDomainJar. Es thread-safe y aplica reglas RFC 6265 estrictas.
 type Jar struct {
-	mu      sync.RWMutex
-	buckets map[string]*domainBucket
-	cfg     CookieConfig
+	mu         sync.RWMutex
+	buckets    map[string]*domainBucket
+	cfg        CookieConfig
+	generation atomic.Uint64
 }
 
 // New crea un Jar vacío. cfg controla límites y rigor (rechazo de
@@ -143,6 +145,17 @@ func (j *Jar) Clear() {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	j.buckets = make(map[string]*domainBucket)
+	j.generation.Add(1)
+}
+
+// Generation retorna el contador atómico de versión del Jar. Se incrementa
+// en cada mutación (SetCookies, AddManual, Clear, Reset), permitiendo a la Session
+// cachear el header serializado "Cookie: ..." y evitar el lock en el hot path.
+func (j *Jar) Generation() uint64 {
+	if j == nil {
+		return 0
+	}
+	return j.generation.Load()
 }
 
 func cookieIdentity(c *Cookie) string {
@@ -208,6 +221,7 @@ func (j *Jar) SetCookies(reqHost, reqPath string, fcookies []*fhttp.Cookie) {
 		}
 		bucket.cookies[key] = &c
 	}
+	j.generation.Add(1)
 }
 
 // hostMatchesForSetting valida que un host pueda fijar una cookie para
@@ -398,14 +412,15 @@ func (j *Jar) AddManual(reqHost, reqPath string, c Cookie) {
 		j.buckets[root] = bucket
 	}
 	bucket.cookies[cookieIdentity(&c)] = &c
+	j.generation.Add(1)
 }
 
-// Reset limpia completamente el jar (equivalente a Reset() del jar viejo).
 // Reset limpia completamente el jar (equivalente a Reset() del jar viejo).
 func (j *Jar) Reset() {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	j.buckets = make(map[string]*domainBucket)
+	j.generation.Add(1)
 }
 
 // Snapshot expone una vista de solo lectura, útil para debug/logging.

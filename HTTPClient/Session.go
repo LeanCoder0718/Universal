@@ -32,6 +32,14 @@ type state struct {
 	stickyID     string
 }
 
+type sessionCookieCache struct {
+	gen      uint64
+	host     string
+	path     string
+	isSecure bool
+	header   string
+}
+
 // Session es el núcleo único de la librería.
 type Session struct {
 	mu sync.Mutex // protege SOLO client/builder/profile/currentProxy (mutación de estado)
@@ -52,6 +60,7 @@ type Session struct {
 	connMgr        *ConnectionManager
 	currentGeoKey ConnectionKey
 	stickyID      string
+	geoPolicy     *GeoRoute.GeoPolicy
 	opts          sessionParams
 	storage       map[string]any
 
@@ -60,6 +69,8 @@ type Session struct {
 	// (evita pisar una rotación más reciente con una más antigua bajo
 	// alta concurrencia sobre la MISMA Session, ver hallazgo de carrera).
 	generation atomic.Uint64
+
+	cookieCache atomic.Pointer[sessionCookieCache]
 
 	requestCount atomic.Uint64
 	successCount atomic.Uint64
@@ -81,7 +92,16 @@ type sessionParams struct {
 	profileManager  *Profiles.Manager     // nil = usa ProfileSpec o sistema legacy
 	allowedHosts    []string
 	enableSessionID *bool
+	geoPolicy       *GeoRoute.GeoPolicy
 	err             error
+}
+
+// WithGeoPolicy asigna una política regional explícita e independiente a la sesión,
+// aislándola de variables globales de paquete.
+func WithGeoPolicy(policy GeoRoute.GeoPolicy) Option {
+	return func(p *sessionParams) {
+		p.geoPolicy = &policy
+	}
 }
 
 // WithAllowedSessionHosts restringe la inyección de x-session-id a los hosts/dominios especificados.
@@ -265,7 +285,8 @@ func NewSession(cfg *Config, opts ...Option) (*Session, error) {
 		factory:     params.factory,
 		proxyPool:   pool,
 		connMgr:     params.connMgr,
-		opts:           params,
+		geoPolicy:   params.geoPolicy,
+		opts:        params,
 		clientCache:    make(map[string]Client),
 		clientLastUsed: make(map[string]time.Time),
 		stickyID:       NewStickyID(),
@@ -583,7 +604,11 @@ func (s *Session) RedactedProxyURL() string {
 // Si el proxy soporta country routing (ej: country-XX), reutiliza o arrienda el cliente HTTP con la nueva salida geográfica.
 // Si el país es vacío o genérico ("XX", "GENERIC"), restablece la sesión al proxy general por defecto sin tag regional.
 func (s *Session) SetGeoCountry(countryCode string) error {
-	if !GeoRoute.ActiveApplyGeo {
+	applyGeo := GeoRoute.ActiveApplyGeo
+	if s.geoPolicy != nil {
+		applyGeo = s.geoPolicy.Enabled
+	}
+	if !applyGeo {
 		return nil
 	}
 	countryCode = strings.ToUpper(strings.TrimSpace(countryCode))
@@ -596,8 +621,12 @@ func (s *Session) SetGeoCountry(countryCode string) error {
 	// Si disponemos de ConnectionManager, delegamos el arriendo de transporte
 	// con caché y afinidad de clave para preservar Keep-Alive entre países
 	if s.connMgr != nil {
+		sessionKeyID := ""
+		if (s.proxyPool != nil && s.proxyPool.Mode() == ModeSticky) || s.cfg.Proxy.Sticky {
+			sessionKeyID = s.stickyID
+		}
 		normKey := ConnectionKey{
-			SessionID:   s.stickyID,
+			SessionID:   sessionKeyID,
 			CountryCode: countryCode,
 			RouteID:     "default",
 			Protocol:    s.profile.Protocol,
@@ -652,7 +681,11 @@ func (s *Session) SetGeoCountry(countryCode string) error {
 			return fmt.Errorf("session: error resolviendo proxy base: %w", err)
 		}
 		if resolved.User != "" {
-			resolved.User = GeoRoute.ApplyCountryToUsername(resolved.User, countryCode)
+			if s.geoPolicy != nil {
+				resolved.User = s.geoPolicy.Apply(resolved.User, countryCode)
+			} else {
+				resolved.User = GeoRoute.ApplyCountryToUsername(resolved.User, countryCode)
+			}
 		}
 		if s.client != nil && s.currentProxy != nil &&
 			s.currentProxy.Host == resolved.Host &&
@@ -910,8 +943,24 @@ func (s *Session) attemptWith(ctx context.Context, st state, spec Spec, attemptN
 			cookieHeader = CookieHeaderFromList(filtered)
 		}
 	} else {
-		list := st.jar.CookiesFor(u.Hostname(), u.Path, u.Scheme == "https")
-		cookieHeader = CookieHeaderFromList(list)
+		isSecure := u.Scheme == "https"
+		host := u.Hostname()
+		path := u.Path
+		curGen := st.jar.Generation()
+		cached := s.cookieCache.Load()
+		if cached != nil && cached.gen == curGen && cached.host == host && cached.path == path && cached.isSecure == isSecure {
+			cookieHeader = cached.header
+		} else {
+			list := st.jar.CookiesFor(host, path, isSecure)
+			cookieHeader = CookieHeaderFromList(list)
+			s.cookieCache.Store(&sessionCookieCache{
+				gen:      curGen,
+				host:     host,
+				path:     path,
+				isSecure: isSecure,
+				header:   cookieHeader,
+			})
+		}
 	}
 
 	var err error
@@ -1118,6 +1167,11 @@ func (s *Session) ResetComboState(rotateIdentity bool) error {
 
 	if s.jar != nil {
 		s.jar.Clear()
+	}
+
+	if s.connMgr != nil && s.currentGeoKey.CountryCode != "" {
+		s.connMgr.Release(s.currentGeoKey)
+		s.currentGeoKey = ConnectionKey{}
 	}
 
 	// Renovación obligatoria de la identidad de sesión lógica para aislar el siguiente flujo

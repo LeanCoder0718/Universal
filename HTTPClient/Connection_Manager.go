@@ -68,6 +68,7 @@ type ConnectionManager struct {
 	idleTimeout    time.Duration
 	closed         atomic.Bool
 	cancel         context.CancelFunc // H-06 Fix: contexto para terminar cleanupLoop
+	geoPolicy      *GeoRoute.GeoPolicy
 
 	activePoolsCount atomic.Int64
 	reusedPoolsCount atomic.Uint64
@@ -150,7 +151,11 @@ func (cm *ConnectionManager) GetClient(ctx context.Context, key ConnectionKey, b
 		entryCopy := *baseParams.Proxy
 		if normKey.CountryCode != "GENERIC" {
 			// Adaptar el usuario del proxy al código de país requerido
-			entryCopy.User = applyCountryToUsername(entryCopy.User, normKey.CountryCode)
+			if cm.geoPolicy != nil {
+				entryCopy.User = cm.geoPolicy.Apply(entryCopy.User, normKey.CountryCode)
+			} else {
+				entryCopy.User = applyCountryToUsername(entryCopy.User, normKey.CountryCode)
+			}
 		}
 		targetProxy = &entryCopy
 		params.Proxy = targetProxy
@@ -295,6 +300,20 @@ func (cm *ConnectionManager) Close() {
 		}
 	}
 	cm.activePoolsCount.Store(0)
+}
+
+// SetGeoPolicy asigna una política regional específica al ConnectionManager.
+func (cm *ConnectionManager) SetGeoPolicy(policy GeoRoute.GeoPolicy) {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+	cm.geoPolicy = &policy
+}
+
+// GeoPolicy retorna la política regional configurada en el ConnectionManager, si existe.
+func (cm *ConnectionManager) GeoPolicy() *GeoRoute.GeoPolicy {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+	return cm.geoPolicy
 }
 
 // Stats retorna las métricas de pools activos, creados y reusados.

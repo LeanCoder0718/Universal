@@ -225,7 +225,15 @@ func CleanCountryFromUsername(user string) string {
 // Si el país es vacío, "XX", "GENERIC" o "UNKNOWN", limpia cualquier tag regional previo devolviendo
 // el usuario general por defecto sin extensión regional.
 func ApplyCountryToUsername(user, countryCode string) string {
-	if !ActiveApplyGeo || user == "" {
+	if !ActiveApplyGeo {
+		return user
+	}
+	return ApplyCountryToUsernameWithConfig(user, countryCode, ActiveProviderConfig)
+}
+
+// ApplyCountryToUsernameWithConfig adapta el país en un username usando una configuración de proveedor específica.
+func ApplyCountryToUsernameWithConfig(user, countryCode string, cfg ProxyProviderConfig) string {
+	if user == "" {
 		return user
 	}
 	countryCode = strings.TrimSpace(countryCode)
@@ -245,14 +253,14 @@ func ApplyCountryToUsername(user, countryCode string) string {
 	}
 
 	// Si no tenía tag regional preexistente pero hay un proveedor configurado
-	if ActiveProviderConfig.RegionTemplate != "" {
+	if cfg.RegionTemplate != "" {
 		targetCC := countryCode
-		if ActiveProviderConfig.LowercaseCountry {
+		if cfg.LowercaseCountry {
 			targetCC = strings.ToLower(countryCode)
 		} else {
 			targetCC = strings.ToUpper(countryCode)
 		}
-		regionTag := strings.ReplaceAll(ActiveProviderConfig.RegionTemplate, ActiveProviderConfig.CountryPlaceholder, targetCC)
+		regionTag := strings.ReplaceAll(cfg.RegionTemplate, cfg.CountryPlaceholder, targetCC)
 		return user + regionTag
 	}
 

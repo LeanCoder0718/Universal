@@ -23,6 +23,41 @@ var (
 	ActiveApplyGeo       bool                = true
 )
 
+// GeoPolicy define la política regional para un proceso o sesión de forma aislada,
+// evitando la dependencia en variables globales compartidas.
+type GeoPolicy struct {
+	Enabled        bool
+	ProviderConfig ProxyProviderConfig
+}
+
+// NewGeoPolicy crea una política regional con la configuración especificada.
+func NewGeoPolicy(enabled bool, cfg ProxyProviderConfig) GeoPolicy {
+	return GeoPolicy{
+		Enabled:        enabled,
+		ProviderConfig: cfg,
+	}
+}
+
+// DefaultGeoPolicy retorna la política predeterminada basada en la configuración activa.
+func DefaultGeoPolicy() GeoPolicy {
+	return GeoPolicy{
+		Enabled:        ActiveApplyGeo,
+		ProviderConfig: ActiveProviderConfig,
+	}
+}
+
+// Apply adapta un usuario de proxy según esta política de forma aislada.
+func (p GeoPolicy) Apply(user, country string) string {
+	if !p.Enabled || user == "" || country == "" {
+		return user
+	}
+	country = strings.TrimSpace(country)
+	if country == "" || strings.EqualFold(country, "XX") || strings.EqualFold(country, "GENERIC") || strings.EqualFold(country, "UNKNOWN") {
+		return CleanCountryFromUsername(user)
+	}
+	return ApplyCountryToUsernameWithConfig(user, country, p.ProviderConfig)
+}
+
 // --- ProxyState ---
 
 // ProxyState representa el estado actual de un proxy dentro de su pool.

@@ -159,11 +159,19 @@ type ProxyNode struct {
 	Status         ProxyStatus
 	ConsecutiveErr int
 	CooldownUntil  time.Time
-	TotalSuccess   uint64
-	TotalFailures  uint64
+	TotalSuccess   atomic.Uint64
+	TotalFailures  atomic.Uint64
 	AvgLatencyMs   int64
 	InFlight       int32
-	LastUsed       time.Time
+	lastUsedNano   atomic.Int64
+}
+
+func (n *ProxyNode) LastUsed() time.Time {
+	t := n.lastUsedNano.Load()
+	if t == 0 {
+		return time.Time{}
+	}
+	return time.Unix(0, t)
 }
 
 // AcquirePolicy define las reglas de selección de un proxy para un intento específico.
@@ -204,11 +212,12 @@ func NewPool(raw []string, cfg ProxyConfig) (*Pool, error) {
 	for _, r := range raw {
 		if e, ok := parseEntry(strings.TrimSpace(r)); ok && e.Host != "" && e.Port != "" {
 			entries = append(entries, e)
-			nodes = append(nodes, &ProxyNode{
-				Entry:    e,
-				Status:   StatusHealthy,
-				LastUsed: now,
-			})
+			pn := &ProxyNode{
+				Entry:  e,
+				Status: StatusHealthy,
+			}
+			pn.lastUsedNano.Store(now.UnixNano())
+			nodes = append(nodes, pn)
 		}
 	}
 	if len(entries) == 0 {
@@ -251,23 +260,30 @@ func (p *Pool) Acquire(ctx context.Context, policy AcquirePolicy) (*ProxyNode, f
 		return nil, nil, ErrEmptyProxyPool
 	}
 
-	// H-10 Fix: Caso de 1 solo endpoint / Gateway residencial rotativo:
-	// Acceso lock-free usando atomic para InFlight. Elimina la serialización
-	// de 500+ workers detrás de un mutex para leer siempre el mismo nodo.
+	// 1. Caso de 1 solo endpoint / Gateway residencial rotativo (100% lock-free):
 	if n == 1 {
-		p.mu.Lock()
 		node := p.nodes[0]
 		atomic.AddInt32(&node.InFlight, 1)
-		node.LastUsed = time.Now()
-		p.mu.Unlock()
+		node.lastUsedNano.Store(time.Now().UnixNano())
 		release := p.makeReleaseFunc(node)
 		return node, release, nil
 	}
 
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	// 2. Si no hay exclusiones (primer intento o uso general), selección 100% lock-free por round-robin:
+	if len(policy.ExcludedHosts) == 0 {
+		idx := int(p.rr.Add(1)-1) % n
+		node := p.nodes[idx]
+		atomic.AddInt32(&node.InFlight, 1)
+		node.lastUsedNano.Store(time.Now().UnixNano())
+		release := p.makeReleaseFunc(node)
+		return node, release, nil
+	}
 
-	now := time.Now()
+	// 3. Búsqueda con exclusión bajo RLock para reintentos específicos:
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	nowNano := time.Now().UnixNano()
 
 	// Construir conjunto de exclusiones para búsqueda en O(1)
 	excluded := make(map[string]struct{}, len(policy.ExcludedHosts))
@@ -278,7 +294,6 @@ func (p *Pool) Acquire(ctx context.Context, policy AcquirePolicy) (*ProxyNode, f
 		}
 	}
 
-	// 2. Búsqueda round-robin de candidato no excluido en este intento
 	startIdx := int(p.rr.Add(1)-1) % n
 	for i := 0; i < n; i++ {
 		node := p.nodes[(startIdx+i)%n]
@@ -293,22 +308,25 @@ func (p *Pool) Acquire(ctx context.Context, policy AcquirePolicy) (*ProxyNode, f
 
 		// Candidato óptimo encontrado
 		atomic.AddInt32(&node.InFlight, 1)
-		node.LastUsed = now
+		node.lastUsedNano.Store(nowNano)
 		release := p.makeReleaseFunc(node)
 		return node, release, nil
 	}
 
-	// 3. Fallback cuando todos los proxies de la lista están en excludedHosts
+	// 4. Fallback cuando todos los proxies de la lista están en excludedHosts
 	if policy.AllowFallback {
 		var oldestNode *ProxyNode
+		var oldestTime int64 = 1<<62 - 1
 		for _, node := range p.nodes {
-			if oldestNode == nil || node.LastUsed.Before(oldestNode.LastUsed) {
+			t := node.lastUsedNano.Load()
+			if oldestNode == nil || t < oldestTime {
 				oldestNode = node
+				oldestTime = t
 			}
 		}
 		if oldestNode != nil {
 			atomic.AddInt32(&oldestNode.InFlight, 1)
-			oldestNode.LastUsed = now
+			oldestNode.lastUsedNano.Store(nowNano)
 			release := p.makeReleaseFunc(oldestNode)
 			return oldestNode, release, nil
 		}
@@ -335,18 +353,16 @@ func (p *Pool) makeReleaseFunc(node *ProxyNode) func(success bool, err error) {
 
 // ReportSuccess actualiza el nodo reportando un intento exitoso.
 func (p *Pool) ReportSuccess(e Entry, latency time.Duration) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
 	p.totalOK.Add(1)
 	node := p.findNodeLocked(e)
 	if node == nil {
 		return
 	}
 
+	node.TotalSuccess.Add(1)
+	p.mu.Lock()
 	node.Status = StatusHealthy
 	node.ConsecutiveErr = 0
-	node.TotalSuccess++
 	if latency > 0 {
 		latMs := latency.Milliseconds()
 		if node.AvgLatencyMs == 0 {
@@ -355,23 +371,23 @@ func (p *Pool) ReportSuccess(e Entry, latency time.Duration) {
 			node.AvgLatencyMs = (node.AvgLatencyMs*7 + latMs*3) / 10
 		}
 	}
+	p.mu.Unlock()
 }
 
 // ReportFailure registra la falla en métricas de observabilidad SIN congelar ni banear el proxy.
 // Esto garantiza que proxies residenciales rotativos compartidos por cientos de workers nunca
 // se bloqueen para el resto de goroutines por una IP fallida upstream.
 func (p *Pool) ReportFailure(e Entry, err error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
 	p.totalFail.Add(1)
 	node := p.findNodeLocked(e)
 	if node == nil {
 		return
 	}
 
-	node.TotalFailures++
+	node.TotalFailures.Add(1)
+	p.mu.Lock()
 	node.ConsecutiveErr++
+	p.mu.Unlock()
 }
 
 func (p *Pool) findNodeLocked(e Entry) *ProxyNode {
@@ -395,17 +411,25 @@ func (p *Pool) GetNode(host string) *ProxyNode {
 	defer p.mu.RUnlock()
 	for _, n := range p.nodes {
 		if n.Entry.Host == host || n.Entry.key() == host {
-			cp := *n
-			return &cp
+			cp := &ProxyNode{
+				Entry:          n.Entry,
+				Status:         n.Status,
+				ConsecutiveErr: n.ConsecutiveErr,
+				CooldownUntil:  n.CooldownUntil,
+				AvgLatencyMs:   n.AvgLatencyMs,
+				InFlight:       atomic.LoadInt32(&n.InFlight),
+			}
+			cp.TotalSuccess.Store(n.TotalSuccess.Load())
+			cp.TotalFailures.Store(n.TotalFailures.Load())
+			cp.lastUsedNano.Store(n.lastUsedNano.Load())
+			return cp
 		}
 	}
 	return nil
 }
 
-// Gateway elige un endpoint respetando el pool y la salud actual de los nodos sin incrementar InFlight.
+// Gateway elige un endpoint respetando el pool sin tomar locks ni incrementar InFlight (100% lock-free).
 func (p *Pool) Gateway() (Entry, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
 	n := len(p.nodes)
 	if n == 0 {
 		return Entry{}, ErrEmptyProxyPool
@@ -443,8 +467,8 @@ func (p *Pool) Metrics() []ProxyMetrics {
 	for _, n := range p.nodes {
 		out = append(out, ProxyMetrics{
 			Entry:      n.Entry,
-			Successes:  n.TotalSuccess,
-			Failures:   n.TotalFailures,
+			Successes:  n.TotalSuccess.Load(),
+			Failures:   n.TotalFailures.Load(),
 			AvgLatency: time.Duration(n.AvgLatencyMs) * time.Millisecond,
 			Banned:     n.Status == StatusDead,
 			Status:     n.Status.String(),
