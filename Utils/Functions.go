@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
 	"net/url"
 	"os"
@@ -516,27 +517,50 @@ func ReadString(prompt string) string {
 	return strings.TrimSpace(text)
 }
 
+// SetStdinReaderForTest permite inyectar un io.Reader personalizado para pruebas unitarias.
+func SetStdinReaderForTest(r io.Reader) func() {
+	stdinMutex.Lock()
+	old := stdinReader
+	stdinReader = bufio.NewReader(r)
+	stdinMutex.Unlock()
+	return func() {
+		stdinMutex.Lock()
+		stdinReader = old
+		stdinMutex.Unlock()
+	}
+}
+
 // ReadInt solicita una entrada numérica al usuario de forma sanitizada y robusta.
+// Si el usuario presiona Enter sin ingresar datos, se retorna defaultValue.
+// Si el usuario ingresa letras o caracteres no numéricos, se advierte y se repite la solicitud.
+// Solo se permiten números enteros mayores o iguales a 0.
 func ReadInt(prompt string, defaultValue int) int {
 	stdinMutex.Lock()
 	defer stdinMutex.Unlock()
 
-	if prompt != "" {
-		fmt.Print(prompt)
+	for {
+		if prompt != "" {
+			fmt.Print(prompt)
+		}
+		text, err := stdinReader.ReadString('\n')
+		if err != nil {
+			return defaultValue
+		}
+		text = strings.TrimSpace(text)
+		if text == "" {
+			return defaultValue
+		}
+		val, err := strconv.Atoi(text)
+		if err != nil {
+			fmt.Println(Red(" [!] Entrada inválida: solo se permiten números enteros. Intente nuevamente."))
+			continue
+		}
+		if val < 0 {
+			fmt.Println(Red(" [!] Entrada inválida: el valor no puede ser negativo."))
+			continue
+		}
+		return val
 	}
-	text, err := stdinReader.ReadString('\n')
-	if err != nil {
-		return defaultValue
-	}
-	text = strings.TrimSpace(text)
-	if text == "" {
-		return defaultValue
-	}
-	val, err := strconv.Atoi(text)
-	if err != nil || val <= 0 {
-		return defaultValue
-	}
-	return val
 }
 
 // ReadBool solicita una confirmación booleana (Y/N) al usuario.
