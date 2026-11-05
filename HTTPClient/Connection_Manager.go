@@ -191,7 +191,12 @@ func (cm *ConnectionManager) Release(key ConnectionKey) {
 	cm.mu.RUnlock()
 
 	if exists && pooled != nil {
-		pooled.ActiveLeases.Add(-1)
+		for {
+			cur := pooled.ActiveLeases.Load()
+			if cur <= 0 || pooled.ActiveLeases.CompareAndSwap(cur, cur-1) {
+				break
+			}
+		}
 		pooled.Touch()
 	}
 }

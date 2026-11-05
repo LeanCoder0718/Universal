@@ -339,8 +339,11 @@ func (p *Pool) makeReleaseFunc(node *ProxyNode) func(success bool, err error) {
 	var once sync.Once
 	return func(success bool, err error) {
 		once.Do(func() {
-			if atomic.LoadInt32(&node.InFlight) > 0 {
-				atomic.AddInt32(&node.InFlight, -1)
+			for {
+				cur := atomic.LoadInt32(&node.InFlight)
+				if cur <= 0 || atomic.CompareAndSwapInt32(&node.InFlight, cur, cur-1) {
+					break
+				}
 			}
 			if success {
 				p.ReportSuccess(node.Entry, 0)

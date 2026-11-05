@@ -217,3 +217,4 @@ func TestAntiWAF_ResponseMethods(t *testing.T) {
 		t.Errorf("respuesta normal no debe ser marcada como challenge ni blocked")
 	}
 }
+

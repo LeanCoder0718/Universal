@@ -260,10 +260,6 @@ func QuickStart(poolSize int, proxies []string, proxyType string, maxRetries int
 	AutoTuneConfig(cfg, poolSize)
 	cfg.Debug = false
 
-	for _, opt := range poolOpts {
-		opt(cfg)
-	}
-
 	if maxRetries <= 0 {
 		maxRetries = 1
 	}
@@ -285,6 +281,15 @@ func QuickStart(poolSize int, proxies []string, proxyType string, maxRetries int
 	cfg.Lifecycle.MaxSessionAge = 3 * time.Minute
 	cfg.Lifecycle.MaxConsecutiveErrors = 2
 	cfg.Lifecycle.EnablePreWarm = true
+
+	// Desactivar el rate limiter por host por defecto (se activa si el usuario pasa WithRateLimit)
+	cfg.Worker.RateLimitPerHost = 0
+	cfg.Worker.RateLimitBurst = 0
+
+	// Aplicar poolOpts después de defaults para que las opciones del usuario prevalezcan
+	for _, opt := range poolOpts {
+		opt(cfg)
+	}
 
 	var opts []HTTPClient.Option
 	if len(proxies) > 0 {
@@ -310,9 +315,6 @@ func QuickStart(poolSize int, proxies []string, proxyType string, maxRetries int
 		HTTPClient.WithLanguage("en-US,en;q=0.9"),
 	))
 
-	// Desactivar el rate limiter por host para maximizar el throughput de la línea gigabit
-	cfg.Worker.RateLimitPerHost = 0
-	cfg.Worker.RateLimitBurst = 0
 
 	// MaxInFlight holgado (poolSize * 4) para permitir paralelismo completo sin frenar las 150 goroutines
 	return New(cfg, PoolOptions{MaxInFlight: poolSize * 4}, opts...)
