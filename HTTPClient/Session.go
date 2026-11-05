@@ -75,7 +75,8 @@ type Session struct {
 	requestCount atomic.Uint64
 	successCount atomic.Uint64
 	failureCount atomic.Uint64
-	resetCount   atomic.Uint64
+	resetCount      atomic.Uint64
+	preserveCookies atomic.Bool // true = sesión autenticada con estado, protege cookies ante caídas de proxy o WAF
 }
 
 type Option func(*sessionParams)
@@ -472,18 +473,33 @@ func (s *Session) reportProxy(st state, latency time.Duration, netOK bool) {
 }
 
 // applyAction aplica la transición de estado solo si generation no cambió.
-func (s *Session) applyAction(gen uint64, action retry.Action, class retry.ErrorClass) error {
+func (s *Session) applyAction(gen uint64, action retry.Action, class retry.ErrorClass, preserveCookies ...bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.generation.Load() != gen {
 		return nil
 	}
+
+	shouldPreserve := s.preserveCookies.Load()
+	if len(preserveCookies) > 0 && preserveCookies[0] {
+		shouldPreserve = true
+	}
+
 	switch action {
 	case retry.ActionRotateProxy:
-		return s.rotateProxyLocked(class == retry.ClassBlocked || class == retry.ClassChallenge)
+		clearCookies := (class == retry.ClassBlocked || class == retry.ClassChallenge)
+		if shouldPreserve {
+			clearCookies = false
+		}
+		return s.rotateProxyLocked(clearCookies)
 	case retry.ActionReconnect:
 		return s.reconnectLocked()
 	case retry.ActionRebuildIdentity:
+		if shouldPreserve {
+			// En sesión autenticada con estado, regenerar identidad (TLS/UA) rompería la sesión
+			// en el servidor. Degradamos de forma segura a rotar únicamente el proxy preservando el Jar.
+			return s.rotateProxyLocked(false)
+		}
 		return s.refreshLocked()
 	case retry.ActionWaitSameConn, retry.ActionWaitSameProxy:
 		return nil
@@ -785,7 +801,7 @@ func (s *Session) Do(ctx context.Context, spec Spec) (*Result, error) {
 	}
 
 	maxPerSession := s.cfg.Worker.MaxRequestsPerSession
-	if maxPerSession > 0 && s.requestCount.Load() >= uint64(maxPerSession) {
+	if !s.preserveCookies.Load() && maxPerSession > 0 && s.requestCount.Load() >= uint64(maxPerSession) {
 		s.mu.Lock()
 		var refreshErr error
 		if s.requestCount.Load() >= uint64(maxPerSession) {
@@ -799,6 +815,9 @@ func (s *Session) Do(ctx context.Context, spec Spec) (*Result, error) {
 	s.requestCount.Add(1)
 
 	maxAttempts := s.cfg.Retry.MaxAttempts
+	if spec.MaxAttempts > 0 {
+		maxAttempts = spec.MaxAttempts
+	}
 	if spec.NoRetry || maxAttempts <= 0 {
 		maxAttempts = 1
 	}
@@ -861,7 +880,7 @@ func (s *Session) Do(ctx context.Context, spec Spec) (*Result, error) {
 			}
 		}
 
-		if err := s.applyAction(gen, decision.Action, decision.Class); err != nil {
+		if err := s.applyAction(gen, decision.Action, decision.Class, spec.PreserveCookies); err != nil {
 			s.failureCount.Add(1)
 			if result != nil {
 				result.PreserveBodyForError()
@@ -1165,10 +1184,28 @@ func (s *Session) ProxyPool() *Pool {
 	return s.proxyPool
 }
 
+// MarkAuthenticated marca la sesión como autenticada tras un login exitoso.
+// A partir de este momento, cualquier reintento interno ante errores de transporte
+// o bloqueos WAF rotará el proxy pero preservará estrictamente las cookies en el Jar.
+func (s *Session) MarkAuthenticated() {
+	s.preserveCookies.Store(true)
+}
+
+// PreserveCookiesOnRetry activa o desactiva la preservación de cookies durante los reintentos.
+func (s *Session) PreserveCookiesOnRetry(enable bool) {
+	s.preserveCookies.Store(enable)
+}
+
+// IsAuthenticated indica si la sesión tiene activa la protección de cookies autenticadas.
+func (s *Session) IsAuthenticated() bool {
+	return s.preserveCookies.Load()
+}
+
 // ResetComboState vacía el Jar de cookies y prepara la sesión para el siguiente
 // combo. Mantiene la conexión TCP/TLS viva (connection reuse). Si rotateIdentity
 // es true, asigna un nuevo fingerprint de navegador sin cerrar sockets.
 func (s *Session) ResetComboState(rotateIdentity bool) error {
+	s.preserveCookies.Store(false)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

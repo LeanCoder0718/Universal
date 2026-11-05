@@ -38,7 +38,9 @@ type Spec struct {
 	UseProxy *bool // nil = usa proxy de sesión (si hay), &false = fuerza directo sin proxy, &true = fuerza proxy
 	Redirect *bool // nil = usa config de sesión, &true = sigue redirecciones, &false = detiene en 301/302
 	Redict   *bool // Alias de compatibilidad para "Redict"
-	NoRetry  bool  // true = deshabilita reintentos automáticos para este request
+	NoRetry         bool  // true = deshabilita reintentos automáticos para este request
+	MaxAttempts     int   // Si es > 0, define intentos máximos específicos para esta petición en Session.Do
+	PreserveCookies bool  // true = ante caídas de proxy o bloqueos WAF, rota el proxy pero NUNCA borra las cookies del Jar
 }
 
 // True retorna un puntero a bool con valor true.

@@ -27,6 +27,11 @@ func (c *trackingMockClient) Do(req *fhttp.Request) (*fhttp.Response, error) {
 	if c.handler != nil {
 		rec := httptest.NewRecorder()
 		stdReq, _ := http.NewRequest(req.Method, req.URL.String(), nil)
+		for k, vv := range req.Header {
+			for _, v := range vv {
+				stdReq.Header.Add(k, v)
+			}
+		}
 		c.handler(rec, stdReq)
 		res := rec.Result()
 		fResp := &fhttp.Response{

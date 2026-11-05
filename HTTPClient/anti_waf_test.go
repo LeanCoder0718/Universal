@@ -3,6 +3,7 @@ package HTTPClient
 import (
 	"context"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -256,6 +257,98 @@ func TestSession_NoRetryOnWAFBlock(t *testing.T) {
 
 	if calls := callCount.Load(); calls != 1 {
 		t.Fatalf("esperado exactamente 1 intento con NoRetry: true, ejecutados: %d", calls)
+	}
+}
+
+// TestSession_MultiStep_PreserveCookiesOnRetry verifica el flujo multi-paso:
+// Req 1 (Login) guarda cookie de sesión y marca la sesión con MarkAuthenticated().
+// Req 2 (Profile) sufre bloqueo 403 en el intento 1; Session.Do rota de proxy
+// pero conserva la cookie en el intento 2, completando exitosamente el paso sin reiniciar Req 1.
+func TestSession_MultiStep_PreserveCookiesOnRetry(t *testing.T) {
+	cfg := Default()
+	cfg.Retry.MaxAttempts = 3
+
+	var attemptCount atomic.Int32
+	var cookieReceivedInAttempt2 string
+
+	mockFact := &trackingMockFactory{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			att := attemptCount.Add(1)
+			if r.URL.Path == "/login" {
+				// Req 1: Login exitoso, entrega Set-Cookie
+				http.SetCookie(w, &http.Cookie{
+					Name:  "session_token",
+					Value: "SECRET_AUTH_12345",
+					Path:  "/",
+				})
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"status":"success"}`))
+				return
+			}
+
+			if r.URL.Path == "/profile" {
+				if att == 2 {
+					// Intento 1 de profile (att=2 global): simulamos bloqueo WAF 403
+					w.Header().Set("Content-Type", "text/html")
+					w.WriteHeader(http.StatusForbidden)
+					_, _ = w.Write([]byte("<html><title>Attention Required! | Cloudflare</title><body>_event_transid</body></html>"))
+					return
+				}
+				// Intento 2 de profile (att=3 global): tras rotación de proxy, debe tener la cookie de Login
+				cookieReceivedInAttempt2 = r.Header.Get("Cookie")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"name":"John Doe","phone":"555-1234"}`))
+				return
+			}
+		},
+	}
+
+	session, err := NewSession(cfg, WithTransportFactory(mockFact))
+	if err != nil {
+		t.Fatalf("error creando sesión: %v", err)
+	}
+	defer session.Close()
+
+	// 1. Ejecutar Req 1 (Login)
+	res1, err := session.Do(context.Background(), Spec{
+		Method: "POST",
+		URL:    "https://example.com/login",
+	})
+	if err != nil || !res1.IsSuccess() {
+		t.Fatalf("Login falló: %v", err)
+	}
+	res1.Release()
+
+	// Marcamos sesión como autenticada
+	session.MarkAuthenticated()
+	if !session.IsAuthenticated() {
+		t.Fatal("IsAuthenticated() debió retornar true tras MarkAuthenticated()")
+	}
+
+	// 2. Ejecutar Req 2 (Profile) con reintentos y preservación de cookies
+	res2, err := session.Do(context.Background(), Spec{
+		Method:          "GET",
+		URL:             "https://example.com/profile",
+		MaxAttempts:     3,
+		PreserveCookies: true,
+	})
+	if err != nil {
+		t.Fatalf("Profile falló en retry con cookies: %v", err)
+	}
+	if !res2.IsSuccess() {
+		t.Fatalf("Profile debió tener éxito en el intento 2 tras rotar proxy, status: %d", res2.StatusCode)
+	}
+	res2.Release()
+
+	// Verificar que el intento 2 de profile recibió la cookie de Login
+	if !strings.Contains(cookieReceivedInAttempt2, "session_token=SECRET_AUTH_12345") {
+		t.Fatalf("CRÍTICO: El intento 2 de profile no recibió la cookie de Login tras rotar proxy: %q", cookieReceivedInAttempt2)
+	}
+
+	// 3. ResetComboState debe limpiar la autenticación y el jar para aislar el siguiente combo
+	_ = session.ResetComboState(false)
+	if session.IsAuthenticated() {
+		t.Fatal("IsAuthenticated() debió ser false tras ResetComboState()")
 	}
 }
 
