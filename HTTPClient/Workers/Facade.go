@@ -254,6 +254,27 @@ func WithSessionID(enabled bool) PoolOption {
 	}
 }
 
+// WithInternalRetries configura la cantidad máxima de intentos internos que Session.Do
+// ejecutará para cada petición HTTP individual ante errores de transporte o WAF.
+// Si se establece en 1 (o mediante WithNoInternalRetries()), cada llamada a Session.Do
+// se ejecuta exactamente 1 vez, evitando la multiplicación de intentos cuando un orquestador
+// superior (como Pipeline Multi-Pass o WorkerPool) ya gestiona las rondas de reintentos.
+func WithInternalRetries(attempts int) PoolOption {
+	if attempts <= 0 {
+		attempts = 1
+	}
+	return func(cfg *HTTPClient.Config) {
+		cfg.Retry.MaxAttempts = attempts
+	}
+}
+
+// WithNoInternalRetries desactiva los reintentos internos en Session.Do (fija MaxAttempts = 1).
+// Garantiza que cada petición HTTP sea de 1 solo intento y que el número de reintentos
+// sea estrictamente controlado por el llamador o el Pipeline.
+func WithNoInternalRetries() PoolOption {
+	return WithInternalRetries(1)
+}
+
 // QuickStart crea un pool HTTP listo para producción auto-calibrado automáticamente según poolSize.
 func QuickStart(poolSize int, proxies []string, proxyType string, maxRetries int, poolOpts ...PoolOption) (*Pool, error) {
 	cfg := HTTPClient.Default()
@@ -263,7 +284,7 @@ func QuickStart(poolSize int, proxies []string, proxyType string, maxRetries int
 	if maxRetries <= 0 {
 		maxRetries = 1
 	}
-	cfg.Retry.MaxAttempts = maxRetries
+	cfg.Retry.MaxAttempts = 1 // 1 intento por defecto a nivel HTTP para evitar multiplicación oculta con el Pool
 	cfg.Retry.WaitMin = 100 * time.Millisecond
 	cfg.Retry.WaitMax = 1 * time.Second
 	cfg.Retry.JitterFactor = 0.3
@@ -317,7 +338,7 @@ func QuickStart(poolSize int, proxies []string, proxyType string, maxRetries int
 
 
 	// MaxInFlight holgado (poolSize * 4) para permitir paralelismo completo sin frenar las 150 goroutines
-	return New(cfg, PoolOptions{MaxInFlight: poolSize * 4}, opts...)
+	return New(cfg, PoolOptions{MaxInFlight: poolSize * 4, MaxJobRetries: maxRetries}, opts...)
 }
 
 // QuickStartWithProfile crea un pool HTTP usando el nuevo ProfileManager.
@@ -346,7 +367,7 @@ func QuickStartWithProfile(poolSize int, proxies []string, proxyType string, max
 	if maxRetries <= 0 {
 		maxRetries = 1
 	}
-	cfg.Retry.MaxAttempts = maxRetries
+	cfg.Retry.MaxAttempts = 1 // 1 intento por defecto a nivel HTTP para evitar multiplicación oculta con el Pool
 	cfg.Retry.WaitMin = 100 * time.Millisecond
 	cfg.Retry.WaitMax = 1 * time.Second
 	cfg.Retry.JitterFactor = 0.3
@@ -382,7 +403,7 @@ func QuickStartWithProfile(poolSize int, proxies []string, proxyType string, max
 	// Inyectar el ProfileManager a las opciones del pool.
 	opts = append(opts, HTTPClient.WithProfileManager(profileMgr))
 
-	return New(cfg, PoolOptions{MaxInFlight: poolSize * 4}, opts...)
+	return New(cfg, PoolOptions{MaxInFlight: poolSize * 4, MaxJobRetries: maxRetries}, opts...)
 }
 
 // QuickStartWithHTTPConfig crea un pool HTTP permitiendo especificar la configuración de versiones HTTP (HTTP/1.1, HTTP/2, HTTP/3).
@@ -432,5 +453,5 @@ func QuickStartWithHTTPConfig(poolSize int, proxies []string, proxyType string, 
 		))
 	}
 
-	return New(cfg, PoolOptions{MaxInFlight: poolSize * 4}, opts...)
+	return New(cfg, PoolOptions{MaxInFlight: poolSize * 4, MaxJobRetries: maxRetries}, opts...)
 }

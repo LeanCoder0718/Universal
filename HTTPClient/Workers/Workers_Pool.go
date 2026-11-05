@@ -96,9 +96,9 @@ type PoolOptions struct {
 	// MaxInFlight limita cuántos Do()/Run() concurrentes se permiten en
 	// todo el pool. 0 = sin límite (no recomendado en producción).
 	MaxInFlight int
-	// QueueSize es la capacidad del buffer de espera antes de bloquear
-	// al caller. 0 = bloqueo inmediato si sem está lleno (backpressure
-	// estricto, recomendado por defecto).
+	// MaxJobRetries configura la cantidad máxima de intentos a nivel de Job
+	// en pool.Run() / pool.RunWithRetry(). Si no se define (0), hereda cfg.Retry.MaxAttempts.
+	MaxJobRetries int
 }
 
 // New crea el pool administrando la concurrencia global via semáforo.
@@ -111,14 +111,18 @@ func New(cfg *HTTPClient.Config, opts PoolOptions, sessionOpts ...HTTPClient.Opt
 	}
 
 	cfgCopy := *cfg
-	maxRetries := cfgCopy.Retry.MaxAttempts
+	maxRetries := opts.MaxJobRetries
+	if maxRetries <= 0 {
+		maxRetries = cfgCopy.Retry.MaxAttempts
+	}
 	if maxRetries <= 0 {
 		maxRetries = 1
 	}
 
-	// Configuración de reintentos por petición (Session.Do) con rotación automática de proxy.
+	// Reintentos limpios por petición (Session.Do): por defecto 1 intento si no está configurado
+	// para evitar multiplicación oculta contra los reintentos del orquestador.
 	if cfgCopy.Retry.MaxAttempts <= 0 {
-		cfgCopy.Retry.MaxAttempts = 3
+		cfgCopy.Retry.MaxAttempts = 1
 	}
 
 	p := &Pool{

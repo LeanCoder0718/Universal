@@ -799,7 +799,7 @@ func (s *Session) Do(ctx context.Context, spec Spec) (*Result, error) {
 	s.requestCount.Add(1)
 
 	maxAttempts := s.cfg.Retry.MaxAttempts
-	if maxAttempts <= 0 {
+	if spec.NoRetry || maxAttempts <= 0 {
 		maxAttempts = 1
 	}
 	var lastResult *Result
@@ -834,7 +834,7 @@ func (s *Session) Do(ctx context.Context, spec Spec) (*Result, error) {
 			s.debugLog(spec, result)
 		}
 
-		if !decision.Retry {
+		if spec.NoRetry || !decision.Retry {
 			if decision.Class == retry.ClassSuccess {
 				s.successCount.Add(1)
 			} else {
@@ -1054,6 +1054,9 @@ func (s *Session) attemptWith(ctx context.Context, st state, spec Spec, attemptN
 			Method:     spec.Method,
 			Idempotent: spec.Idempotent,
 		})
+		if spec.NoRetry {
+			dec = retry.Decision{Retry: false, Class: retry.ClassPermanent}
+		}
 		return result, dec
 	}
 
@@ -1081,6 +1084,9 @@ func (s *Session) attemptWith(ctx context.Context, st state, spec Spec, attemptN
 		BodyTruncated: resp.Truncated,
 		RetryAfter:    resp.RetryAfter(),
 	})
+	if spec.NoRetry {
+		dec = retry.Decision{Retry: false, Class: retry.ClassPermanent}
+	}
 	return result, dec
 }
 

@@ -259,3 +259,33 @@ func TestWorkerPool_MassiveConcurrentExecution(t *testing.T) {
 		t.Fatalf("esperadas %d tareas procesadas, completadas: %d", numTasks, completed.Load())
 	}
 }
+
+// TestWorkerPool_InternalRetriesDecoupled verifica que QuickStart configure
+// cfg.Retry.MaxAttempts = 1 por defecto para evitar multiplicación de reintentos
+// (ej. 4 rondas de pipeline * 3 reintentos HTTP = 12 intentos), manteniendo maxRetries
+// desacoplado a nivel de Job en el pool.
+func TestWorkerPool_InternalRetriesDecoupled(t *testing.T) {
+	pool, err := QuickStart(10, []string{"127.0.0.1:8080:u:p"}, "http", 3)
+	if err != nil {
+		t.Fatalf("falló QuickStart: %v", err)
+	}
+	defer pool.Close()
+
+	if pool.maxRetries != 3 {
+		t.Fatalf("esperado pool.maxRetries = 3 a nivel de Job, obtenido %d", pool.maxRetries)
+	}
+	if pool.cfg.Retry.MaxAttempts != 1 {
+		t.Fatalf("esperado cfg.Retry.MaxAttempts = 1 a nivel HTTP interno para evitar multiplicación, obtenido %d", pool.cfg.Retry.MaxAttempts)
+	}
+
+	// Con WithNoInternalRetries explícito
+	poolExplicit, err := QuickStart(10, []string{"127.0.0.1:8080:u:p"}, "http", 3, WithNoInternalRetries())
+	if err != nil {
+		t.Fatalf("falló QuickStart con WithNoInternalRetries: %v", err)
+	}
+	defer poolExplicit.Close()
+
+	if poolExplicit.cfg.Retry.MaxAttempts != 1 {
+		t.Fatalf("esperado cfg.Retry.MaxAttempts = 1 con WithNoInternalRetries, obtenido %d", poolExplicit.cfg.Retry.MaxAttempts)
+	}
+}

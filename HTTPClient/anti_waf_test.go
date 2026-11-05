@@ -1,6 +1,9 @@
 package HTTPClient
 
 import (
+	"context"
+	"net/http"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -215,6 +218,44 @@ func TestAntiWAF_ResponseMethods(t *testing.T) {
 	}
 	if respNormal.IsChallenge() || respNormal.IsBlocked() {
 		t.Errorf("respuesta normal no debe ser marcada como challenge ni blocked")
+	}
+}
+
+// TestSession_NoRetryOnWAFBlock verifica que cuando spec.NoRetry = true,
+// una respuesta 403 / Radware / WAF o error de red ejecute exactamente 1 intento
+// sin activar el motor de reintentos de Session.Do.
+func TestSession_NoRetryOnWAFBlock(t *testing.T) {
+	cfg := Default()
+	cfg.Retry.MaxAttempts = 5
+
+	var callCount atomic.Int32
+	mockFact := &trackingMockFactory{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			callCount.Add(1)
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte("<html><title>Attention Required! | Cloudflare</title><body>_event_transid</body></html>"))
+		},
+	}
+
+	session, err := NewSession(cfg, WithTransportFactory(mockFact))
+	if err != nil {
+		t.Fatalf("error creando sesión: %v", err)
+	}
+
+	spec := Spec{
+		Method:  "POST",
+		URL:     "https://example.com/api/login",
+		NoRetry: true,
+	}
+
+	res, _ := session.Do(context.Background(), spec)
+	if res != nil {
+		defer res.Release()
+	}
+
+	if calls := callCount.Load(); calls != 1 {
+		t.Fatalf("esperado exactamente 1 intento con NoRetry: true, ejecutados: %d", calls)
 	}
 }
 
