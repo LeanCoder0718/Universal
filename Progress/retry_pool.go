@@ -44,7 +44,7 @@ func NewRetryPool(opts RetryOptions, fn ProcessFunc) *RetryPool {
 		opts.NumWorkers = 1
 	}
 	if opts.QueueSize <= 0 {
-		opts.QueueSize = 1000
+		opts.QueueSize = 5000
 	}
 	if opts.MaxAttempts <= 0 {
 		opts.MaxAttempts = 3

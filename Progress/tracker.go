@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -24,43 +25,55 @@ type WorkerProgress struct {
 	ActiveChunk *Chunk // Chunk completo que tiene asignado el worker
 }
 
+const trackerShardCount = 64
+
+type trackerShard struct {
+	mu       sync.RWMutex
+	progress map[int]*WorkerProgress
+}
+
 // Tracker administra el estado de avance global y por worker para checkpoints.
+// Utiliza sharding de 64 particiones para permitir 5.000+ workers concurrentes
+// sin contención de locks en el hot path.
 type Tracker struct {
-	mu             sync.RWMutex
-	readerOffset   int64                   // Offset en bytes del archivo hasta donde el reader ha emitido
-	workerProgress map[int]*WorkerProgress // Progreso actual de cada worker por ID
+	readerOffset atomic.Int64
+	shards       [trackerShardCount]trackerShard
 }
 
-// NewTracker crea una instancia de Tracker.
+// NewTracker crea una instancia de Tracker inicializando sus shards concurrentes.
 func NewTracker() *Tracker {
-	return &Tracker{
-		workerProgress: make(map[int]*WorkerProgress),
+	t := &Tracker{}
+	for i := 0; i < trackerShardCount; i++ {
+		t.shards[i].progress = make(map[int]*WorkerProgress)
 	}
+	return t
 }
 
-// SetReaderOffset actualiza el offset en bytes alcanzado por el reader al emitir un chunk.
+// SetReaderOffset actualiza el offset en bytes alcanzado por el reader de forma atómica.
 func (t *Tracker) SetReaderOffset(offset int64) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	t.readerOffset = offset
+	t.readerOffset.Store(offset)
 }
 
-// GetReaderOffset retorna el offset actual del reader.
+// GetReaderOffset retorna el offset actual del reader de forma atómica y lock-free.
 func (t *Tracker) GetReaderOffset() int64 {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-	return t.readerOffset
+	return t.readerOffset.Load()
 }
 
-// UpdateWorkerProgress actualiza la posición actual de un worker procesando un chunk.
-func (t *Tracker) UpdateWorkerProgress(workerID int, chk *Chunk, lineIndex int) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+func (t *Tracker) getShard(workerID int) *trackerShard {
+	u := uint(workerID)
+	return &t.shards[u%trackerShardCount]
+}
 
-	wp, ok := t.workerProgress[workerID]
+// UpdateWorkerProgress actualiza la posición actual de un worker procesando un chunk (modo coarse).
+func (t *Tracker) UpdateWorkerProgress(workerID int, chk *Chunk, lineIndex int) {
+	shard := t.getShard(workerID)
+	shard.mu.Lock()
+	defer shard.mu.Unlock()
+
+	wp, ok := shard.progress[workerID]
 	if !ok {
 		wp = &WorkerProgress{WorkerID: workerID}
-		t.workerProgress[workerID] = wp
+		shard.progress[workerID] = wp
 	}
 
 	wp.ActiveChunk = chk
@@ -76,13 +89,34 @@ func (t *Tracker) UpdateWorkerProgress(workerID int, chk *Chunk, lineIndex int) 
 	}
 }
 
-// ClearWorkerProgress marca que un worker terminó su chunk actual.
+// UpdateWorkerLine actualiza la línea individual que está siendo procesada por un worker en modo despacho fino.
+func (t *Tracker) UpdateWorkerLine(workerID int, line Line) {
+	shard := t.getShard(workerID)
+	shard.mu.Lock()
+	defer shard.mu.Unlock()
+
+	wp, ok := shard.progress[workerID]
+	if !ok {
+		wp = &WorkerProgress{WorkerID: workerID}
+		shard.progress[workerID] = wp
+	}
+	wp.ActiveChunk = nil
+	wp.CurrentLine = line
+	wp.LineIndex = 0
+	wp.SequenceID = 0
+}
+
+// ClearWorkerProgress marca que un worker terminó su tarea actual.
 func (t *Tracker) ClearWorkerProgress(workerID int) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	if wp, ok := t.workerProgress[workerID]; ok {
+	shard := t.getShard(workerID)
+	shard.mu.Lock()
+	defer shard.mu.Unlock()
+
+	if wp, ok := shard.progress[workerID]; ok {
 		wp.ActiveChunk = nil
+		wp.CurrentLine = Line{}
 		wp.LineIndex = 0
+		wp.SequenceID = 0
 	}
 }
 
@@ -151,9 +185,6 @@ func (t *Tracker) SavePendingSnapshot(
 	chunkQueue <-chan *Chunk,
 	drainRetryQueue func(w *bufio.Writer) error,
 ) (string, error) {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
 	fmt.Println("\n\033[1;33m=========================================================================\033[0m")
 	fmt.Println("\033[1;33m [!] INICIANDO GUARDADO DE LÍNEAS PENDIENTES EN CALIENTE...\033[0m")
 	fmt.Println("\033[1;33m=========================================================================\033[0m")
@@ -186,17 +217,24 @@ func (t *Tracker) SavePendingSnapshot(
 	}
 
 	var estimatedInMemoryBytes int64
-	for _, wp := range t.workerProgress {
-		if wp.ActiveChunk != nil && wp.LineIndex < len(wp.ActiveChunk.Lines) {
-			for _, line := range wp.ActiveChunk.Lines[wp.LineIndex:] {
-				estimatedInMemoryBytes += int64(len(line.Content) + 1)
+	for i := 0; i < trackerShardCount; i++ {
+		shard := &t.shards[i]
+		shard.mu.RLock()
+		for _, wp := range shard.progress {
+			if wp.ActiveChunk != nil && wp.LineIndex < len(wp.ActiveChunk.Lines) {
+				for _, line := range wp.ActiveChunk.Lines[wp.LineIndex:] {
+					estimatedInMemoryBytes += int64(len(line.Content) + 1)
+				}
+			} else if len(wp.CurrentLine.Content) > 0 {
+				estimatedInMemoryBytes += int64(len(wp.CurrentLine.Content) + 1)
 			}
 		}
+		shard.mu.RUnlock()
 	}
 
 	remainingSrcBytes := int64(0)
 	if sourceFilePath != "" {
-		remainingSrcBytes = srcFileSize - t.readerOffset
+		remainingSrcBytes = srcFileSize - t.readerOffset.Load()
 		if remainingSrcBytes < 0 {
 			remainingSrcBytes = 0
 		}
@@ -223,18 +261,38 @@ func (t *Tracker) SavePendingSnapshot(
 
 	bufWriter := bufio.NewWriterSize(progWriter, 64*1024)
 
-	for _, wp := range t.workerProgress {
-		if wp.ActiveChunk != nil && wp.LineIndex < len(wp.ActiveChunk.Lines) {
-			remainingLines := wp.ActiveChunk.Lines[wp.LineIndex:]
-			for _, line := range remainingLines {
-				if _, err := bufWriter.Write(line.Content); err != nil {
+	// Volcado ordenado de líneas activas por worker:
+	// - Si el worker tiene ActiveChunk (modo coarse), escribe las líneas restantes del bloque.
+	// - Si el worker tiene CurrentLine (modo fine-grained), escribe ONLY su línea en ejecución.
+	// De esta forma se elimina la duplicación de chunks compartidos entre workers.
+	for i := 0; i < trackerShardCount; i++ {
+		shard := &t.shards[i]
+		shard.mu.RLock()
+		for _, wp := range shard.progress {
+			if wp.ActiveChunk != nil && wp.LineIndex < len(wp.ActiveChunk.Lines) {
+				remainingLines := wp.ActiveChunk.Lines[wp.LineIndex:]
+				for _, line := range remainingLines {
+					if _, err := bufWriter.Write(line.Content); err != nil {
+						shard.mu.RUnlock()
+						return "", err
+					}
+					if _, err := bufWriter.WriteString("\n"); err != nil {
+						shard.mu.RUnlock()
+						return "", err
+					}
+				}
+			} else if len(wp.CurrentLine.Content) > 0 {
+				if _, err := bufWriter.Write(wp.CurrentLine.Content); err != nil {
+					shard.mu.RUnlock()
 					return "", err
 				}
 				if _, err := bufWriter.WriteString("\n"); err != nil {
+					shard.mu.RUnlock()
 					return "", err
 				}
 			}
 		}
+		shard.mu.RUnlock()
 	}
 
 	if chunkQueue != nil {
@@ -272,8 +330,9 @@ func (t *Tracker) SavePendingSnapshot(
 		}
 		defer srcFile.Close()
 
-		if t.readerOffset > 0 {
-			if _, err := srcFile.Seek(t.readerOffset, io.SeekStart); err != nil {
+		offset := t.readerOffset.Load()
+		if offset > 0 {
+			if _, err := srcFile.Seek(offset, io.SeekStart); err != nil {
 				return "", fmt.Errorf("error haciendo Seek en archivo fuente: %w", err)
 			}
 		}

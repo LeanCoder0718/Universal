@@ -340,7 +340,9 @@ func resolveReader(source interface{}, chunkSize int, pool *ChunkPool, enableGeo
 			return nil, 0, fmt.Errorf("progress: la ruta es un directorio: %s", s)
 		}
 
-		if enableGeo && fi.Size() < 250*1024*1024 {
+		// Solo ordenar en memoria si el archivo es pequeño (<20MB, ~400k líneas) para evitar
+		// saturar gigabytes de RAM. Para archivos mayores, procesar en streaming Zero-RAM con FileReader.
+		if enableGeo && fi.Size() < 20*1024*1024 {
 			lines, err := readAllLinesFromFile(s)
 			if err == nil {
 				orderedCombos, orderedCountries := SortCombosByCountry(lines, mode)
@@ -405,15 +407,24 @@ func startAutoTuner(ctx context.Context, pipe *Pipeline, col *Collector, maxWork
 				if delta > 0 {
 					lat := col.LatencySummary()
 
+					// Paso de ajuste proporcional a la escala de concurrencia
+					step := current / 20
+					if step < 5 {
+						step = 5
+					}
+					if step > 100 {
+						step = 100
+					}
+
 					// Si la latencia P95 se dispara a más de 3 segundos, reducir workers para descongestionar
 					if lat.P95Ms > 3000 && current > 20 {
-						pipe.RemoveWorkers(5)
+						pipe.RemoveWorkers(step)
 						consecutiveGoodSamples = 0
 					} else if lat.P90Ms < 600 && current < maxWorkers {
 						// Si la latencia es baja y estable, escalar suavemente
 						consecutiveGoodSamples++
 						if consecutiveGoodSamples >= 3 {
-							pipe.AddWorkers(5)
+							pipe.AddWorkers(step)
 							consecutiveGoodSamples = 0
 						}
 					}
@@ -503,19 +514,26 @@ func Process(ctx context.Context, source interface{}, fn ProcessFunc, opts ...Pr
 	}
 
 	pipe := builder.Pipeline()
+	defer pipe.Cleanup()
+
+	// runCtx garantiza que cuando pipe.Run concluya (por finalización normal, EOF,
+	// error o cancelación), todas las goroutines accesorias (auto-tuner, keyboard,
+	// progressUpdate) se cancelen y liberen inmediatamente sin dejar goroutines huérfanas.
+	runCtx, runCancel := context.WithCancel(ctx)
+	defer runCancel()
 
 	// Iniciar listener de teclado en segundo plano si está habilitado
 	if cfg.enableKeyboard {
-		pipe.StartKeyboardListener(ctx, cfg.keyboardCb)
+		pipe.StartKeyboardListener(runCtx, cfg.keyboardCb)
 	}
 
 	// Iniciar auto-tuner dinámico en segundo plano si está habilitado
 	if cfg.enableAutoTune {
-		maxCap := cfg.numWorkers * 3
-		if maxCap > 1000 {
+		maxCap := cfg.numWorkers * 2
+		if maxCap < 1000 {
 			maxCap = 1000
 		}
-		startAutoTuner(ctx, pipe, collector, maxCap)
+		startAutoTuner(runCtx, pipe, collector, maxCap)
 	}
 
 	// Notificador periódico de progreso si fue registrado
@@ -525,7 +543,7 @@ func Process(ctx context.Context, source interface{}, fn ProcessFunc, opts ...Pr
 			defer ticker.Stop()
 			for {
 				select {
-				case <-ctx.Done():
+				case <-runCtx.Done():
 					return
 				case <-ticker.C:
 					cfg.onProgressUpdate(
@@ -541,5 +559,5 @@ func Process(ctx context.Context, source interface{}, fn ProcessFunc, opts ...Pr
 		}()
 	}
 
-	return pipe.Run(ctx)
+	return pipe.Run(runCtx)
 }

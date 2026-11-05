@@ -88,6 +88,14 @@ func (s *WriterSink) Run(ctx context.Context, resultQueue <-chan *ChunkResult) (
 						return stats, err
 					}
 				}
+
+				// Liberar referencias de memoria de líneas y outputs para permitir que el GC
+				// recupere memoria inmediatamente en lugar de retener miles de buffers.
+				for i := range res.Results {
+					res.Results[i].Line.Content = nil
+					res.Results[i].Output = nil
+				}
+				res.Results = nil
 			}
 		}
 	}

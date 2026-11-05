@@ -79,7 +79,6 @@ type WorkerPool struct {
 
 type lineTask struct {
 	ct      *chunkTracker
-	chk     *Chunk
 	line    Line
 	lineIdx int
 }
@@ -130,11 +129,13 @@ func getCachedNumGoroutines() int {
 }
 
 // NewWorkerPool crea y configura una instancia de WorkerPool calculando automáticamente W óptimo.
+// Si el usuario especifica NumWorkers > 0 (por ejemplo 5.000), se respeta netamente
+// ese valor sin importar NumCPU ni WorkloadType.
 func NewWorkerPool(opts WorkerOptions, fn ProcessFunc) *WorkerPool {
 	numCPU := runtime.NumCPU()
 	finalWorkers := opts.NumWorkers
 
-	if !opts.ForceWorkers || finalWorkers <= 0 {
+	if finalWorkers <= 0 {
 		if opts.Workload == WorkloadIO {
 			finalWorkers = numCPU * 4
 		} else {
@@ -234,8 +235,8 @@ func (p *WorkerPool) Start(ctx context.Context, chunkQueue <-chan *Chunk, result
 	if lineBufSize < 128 {
 		lineBufSize = 128
 	}
-	if lineBufSize > 8192 {
-		lineBufSize = 8192
+	if lineBufSize > 32768 {
+		lineBufSize = 32768
 	}
 	p.lineQueue = make(chan lineTask, lineBufSize)
 	p.dispDone = make(chan struct{})
@@ -292,12 +293,18 @@ func (p *WorkerPool) Start(ctx context.Context, chunkQueue <-chan *Chunk, result
 
 					task := lineTask{
 						ct:      ct,
-						chk:     chk,
 						line:    line,
 						lineIdx: i,
 					}
 					select {
 					case <-ctx.Done():
+						undispatched := int32(nLines - i)
+						if ct.remaining.Add(-undispatched) == 0 {
+							p.activeChunks.Add(-1)
+							if p.opts.ChunkPool != nil {
+								p.opts.ChunkPool.Put(chk)
+							}
+						}
 						return
 					case p.lineQueue <- task:
 					}
@@ -412,7 +419,7 @@ func (p *WorkerPool) workerLoop(ctx context.Context, workerID int, chunkQueue <-
 				}
 
 				if p.opts.Checkpoint != nil {
-					p.opts.Checkpoint.UpdateWorkerProgress(workerID, task.chk, task.lineIdx)
+					p.opts.Checkpoint.UpdateWorkerLine(workerID, task.line)
 				}
 
 				p.busyWorkers.Add(1)

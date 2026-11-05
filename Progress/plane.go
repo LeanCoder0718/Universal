@@ -10,10 +10,13 @@ import (
 )
 
 // Plane administra las señales de control global (P/C/G) y sincroniza la pausa de los workers.
+// Utiliza un canal de señalización para despertar a 5.000+ workers en O(1) sin contención
+// y sin crear miles de goroutines efímeras watchdog.
 type Plane struct {
 	paused     atomic.Bool
 	mu         sync.Mutex
 	cond       *sync.Cond
+	pauseChan  chan struct{}
 	checkpoint *Tracker
 }
 
@@ -33,13 +36,26 @@ func (p *Plane) IsPaused() bool {
 
 // Pause activa el estado de pausa global (tecla P).
 func (p *Plane) Pause() {
-	p.paused.Store(true)
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if !p.paused.Load() {
+		p.paused.Store(true)
+		p.pauseChan = make(chan struct{})
+	}
 }
 
-// Resume desactiva la pausa y despierta a todas las goroutines suspendidas (tecla C).
+// Resume desactiva la pausa y despierta a todas las goroutines suspendidas en O(1) (tecla C).
 func (p *Plane) Resume() {
-	p.paused.Store(false)
-	p.cond.Broadcast()
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.paused.Load() {
+		p.paused.Store(false)
+		if p.pauseChan != nil {
+			close(p.pauseChan)
+			p.pauseChan = nil
+		}
+		p.cond.Broadcast()
+	}
 }
 
 // Save ejecuta el guardado en caliente de las líneas pendientes (tecla G).
@@ -67,40 +83,30 @@ func (p *Plane) Save(
 }
 
 // WaitIfPaused es invocado por los workers entre cada línea procesada.
-// Incluye un watchdog que despierta a la goroutine si el contexto se cancela
-// mientras está bloqueada en cond.Wait(), evitando un bloqueo infinito.
+// Espera en el canal de pausa sin crear goroutines efímeras y respetando
+// la cancelación del contexto de forma instantánea.
 func (p *Plane) WaitIfPaused(ctx context.Context) error {
 	if !p.IsPaused() {
 		return nil
 	}
 
 	p.mu.Lock()
-	defer p.mu.Unlock()
+	ch := p.pauseChan
+	p.mu.Unlock()
 
-	// Watchdog: si el context se cancela mientras estamos en Wait(),
-	// necesitamos despertar la goroutine con Broadcast.
-	watchdogDone := make(chan struct{})
-	go func() {
-		select {
-		case <-ctx.Done():
-			p.cond.Broadcast()
-		case <-watchdogDone:
-		}
-	}()
-	defer close(watchdogDone)
-
-	for p.IsPaused() {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		p.cond.Wait()
+	if ch == nil {
+		return nil
 	}
 
-	return nil
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-ch:
+		return nil
+	}
 }
 
 // Stop desactiva la pausa y despierta a todos los workers para permitir un shutdown limpio.
 func (p *Plane) Stop() {
-	p.paused.Store(false)
-	p.cond.Broadcast()
+	p.Resume()
 }

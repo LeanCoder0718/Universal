@@ -2,9 +2,22 @@ package progress
 
 import (
 	"context"
+	"sync"
 
 	"github.com/LeanCoder0718/Universal/GeoRoute"
 )
+
+var (
+	defaultDetector     *GeoRoute.CountryDetector
+	defaultDetectorOnce sync.Once
+)
+
+func getDefaultCountryDetector() *GeoRoute.CountryDetector {
+	defaultDetectorOnce.Do(func() {
+		defaultDetector = GeoRoute.NewCountryDetector(50000)
+	})
+	return defaultDetector
+}
 
 // Line representa una línea individual leída del archivo con su metadato y payload.
 type Line struct {
@@ -25,7 +38,7 @@ func (l *Line) Context(parent ...context.Context) context.Context {
 	}
 	country := l.Country
 	if country == "" && len(l.Content) > 0 {
-		country = string(GeoRoute.NewCountryDetector(1000).Detect(string(l.Content)))
+		country = string(getDefaultCountryDetector().Detect(string(l.Content)))
 	}
 	if country == "" {
 		country = "XX"

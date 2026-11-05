@@ -340,6 +340,19 @@ func (p *Pipeline) GetFailedLines() []Line {
 	return list
 }
 
+// Cleanup elimina cualquier archivo temporal de spool remanente en disco para evitar fugas de almacenamiento.
+func (p *Pipeline) Cleanup() {
+	p.failedRetryMu.Lock()
+	spoolFile := p.lastFailedSpool
+	p.lastFailedSpool = ""
+	p.failedRetryLines = nil
+	p.failedRetryMu.Unlock()
+
+	if spoolFile != "" {
+		_ = os.Remove(spoolFile)
+	}
+}
+
 type spoolFileWriter struct {
 	file   *os.File
 	writer *bufio.Writer
@@ -649,10 +662,17 @@ func (p *Pipeline) runPass(ctx context.Context, reader ChunkReader, onLineFail f
 		p.retryPool.Start(ctx, rawResultQueue, &wgRetry)
 	}
 
-	// Interceptor que captura fallos de línea para la siguiente ronda sin alterar el Sink
+	// Interceptor que captura fallos de línea para la siguiente ronda sin alterar el Sink.
+	// Si el contexto se cancela, continúa drenando rawResultQueue para que ningún worker
+	// quede bloqueado al enviar resultados y wgPrimary.Wait() pueda terminar limpiamente.
 	go func() {
 		defer close(sinkResultQueue)
 		for res := range rawResultQueue {
+			if ctx.Err() != nil {
+				// Contexto cancelado: drenar de inmediato sin bloquear en sinkResultQueue
+				continue
+			}
+
 			if res != nil {
 				for _, lr := range res.Results {
 					if !lr.Success && onLineFail != nil {
@@ -667,7 +687,8 @@ func (p *Pipeline) runPass(ctx context.Context, reader ChunkReader, onLineFail f
 			select {
 			case sinkResultQueue <- res:
 			case <-ctx.Done():
-				return
+				// Si se cancela mientras intenta enviar a sink, el bucle for continuará
+				// drenando rawResultQueue hasta que el canal sea cerrado por wgPrimary.Wait().
 			}
 		}
 	}()

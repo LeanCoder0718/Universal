@@ -2,8 +2,11 @@ package progress
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -626,4 +629,205 @@ func TestProgress_ActiveApplyGeoOption4Disabled(t *testing.T) {
 		t.Errorf("pos 2: got %s, want third@domain.us:pass", receivedCombos[2])
 	}
 }
+
+// TestWorkerPoolExact5000Workers verifica que si el usuario especifica 5.000 workers,
+// el sistema asigne netamente 5.000 workers sin importar NumCPU ni ForceWorkers.
+func TestWorkerPoolExact5000Workers(t *testing.T) {
+	opts := WorkerOptions{
+		NumWorkers:   5000,
+		ForceWorkers: false, // Debe respetarse incluso si ForceWorkers es false
+		Workload:     WorkloadCPU,
+	}
+
+	dummyFn := func(line *Line) ([]byte, error) {
+		return []byte("ok"), nil
+	}
+
+	pool := NewWorkerPool(opts, dummyFn)
+	if pool.NumWorkers() != 5000 {
+		t.Fatalf("pool.NumWorkers() = %d, want exactly 5000", pool.NumWorkers())
+	}
+	if pool.CurrentWorkers() != 5000 {
+		t.Fatalf("pool.CurrentWorkers() = %d, want exactly 5000", pool.CurrentWorkers())
+	}
+}
+
+// TestSavePendingSnapshotNoDuplicationInFineGrainedMode verifica que cuando múltiples workers
+// procesan líneas concurrentemente, el guardado en caliente SavePendingSnapshot no duplique líneas.
+func TestSavePendingSnapshotNoDuplicationInFineGrainedMode(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "pending_dedup_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	tracker := NewTracker()
+	plane := NewPlane(tracker)
+	outFile := filepath.Join(tmpDir, "dedup_output.txt")
+
+	// Simular 3 workers procesando líneas individuales simultáneamente (despacho fino)
+	tracker.UpdateWorkerLine(0, Line{ID: 1, Content: []byte("line1@domain.com:pass1")})
+	tracker.UpdateWorkerLine(1, Line{ID: 2, Content: []byte("line2@domain.com:pass2")})
+	tracker.UpdateWorkerLine(2, Line{ID: 3, Content: []byte("line3@domain.com:pass3")})
+
+	savedPath, err := plane.Save("", outFile, nil, nil)
+	if err != nil {
+		t.Fatalf("plane.Save failed: %v", err)
+	}
+
+	data, err := os.ReadFile(savedPath)
+	if err != nil {
+		t.Fatalf("Failed to read saved file: %v", err)
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("Expected exactly 3 lines, got %d: %v", len(lines), lines)
+	}
+
+	seen := make(map[string]int)
+	for _, l := range lines {
+		seen[l]++
+	}
+	for k, count := range seen {
+		if count > 1 {
+			t.Errorf("Line %q is duplicated %d times!", k, count)
+		}
+	}
+}
+
+// TestAdaptiveScheduler5000WorkersNoCollapse verifica que el cálculo de tapering
+// no colapse el tamaño del chunk a 1 cuando hay 5.000 workers.
+func TestAdaptiveScheduler5000WorkersNoCollapse(t *testing.T) {
+	sched := NewAdaptiveScheduler(AdaptiveSchedulerOptions{
+		TotalItems:   100000,
+		NumWorkers:   5000,
+		MinChunkSize: 5,
+		MaxChunkSize: 500,
+	})
+
+	// Con 50.000 ítems restantes (mucho más de 2*5.000), no debe forzar MinChunkSize
+	sz := sched.CurrentChunkSize(50000)
+	if sz <= 1 {
+		t.Errorf("CurrentChunkSize(50000) with 5000 workers collapsed to %d, want > 1", sz)
+	}
+
+	// Probar RecordLatency lock-free / muestreado
+	for i := 0; i < 100; i++ {
+		sched.RecordLatency(50 * time.Millisecond)
+	}
+	szAfter := sched.CurrentChunkSize(50000)
+	if szAfter < 1 {
+		t.Errorf("CurrentChunkSize after latency records = %d, want >= 1", szAfter)
+	}
+}
+
+// TestPlanePauseResumeZeroGoroutineStorm verifica que pausar y reanudar con Plane
+// no cause fugas de goroutines ni tormenta de bloqueos.
+func TestPlanePauseResumeZeroGoroutineStorm(t *testing.T) {
+	plane := NewPlane(nil)
+	plane.Pause()
+
+	if !plane.IsPaused() {
+		t.Fatal("Plane should be paused")
+	}
+
+	initialGoroutines := runtime.NumGoroutine()
+
+	var wg sync.WaitGroup
+	const workerCount = 500
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	for i := 0; i < workerCount; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_ = plane.WaitIfPaused(ctx)
+		}()
+	}
+
+	// Dejar que los workers entren en WaitIfPaused
+	time.Sleep(50 * time.Millisecond)
+
+	// Reanudar en O(1)
+	plane.Resume()
+	wg.Wait()
+
+	if plane.IsPaused() {
+		t.Fatal("Plane should not be paused after Resume")
+	}
+
+	time.Sleep(20 * time.Millisecond)
+	afterGoroutines := runtime.NumGoroutine()
+	// No debe haber acumulación descontrolada de goroutines
+	if afterGoroutines-initialGoroutines > 10 {
+		t.Errorf("Goroutine leak detected: before=%d, after=%d", initialGoroutines, afterGoroutines)
+	}
+}
+
+// TestProcessNoGoroutineLeak verifies that Process() cancels and shuts down
+// all accessory goroutines (auto-tuner, keyboard, progress notifier) upon completion.
+func TestProcessNoGoroutineLeak(t *testing.T) {
+	initialGoroutines := runtime.NumGoroutine()
+
+	input := []string{"test1@domain.com:pass", "test2@domain.com:pass"}
+	fn := func(line *Line) ([]byte, error) {
+		return []byte("ok"), nil
+	}
+
+	_, err := Process(context.Background(), input, fn,
+		WithWorkers(2),
+		WithAutoTune(true),
+		WithKeyboard(false),
+		WithProgressUpdate(func(stats Stats, lps uint64, workers int) {}),
+	)
+	if err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	time.Sleep(50 * time.Millisecond)
+	afterGoroutines := runtime.NumGoroutine()
+
+	// There should be no leaked auto-tuner or progress notifier goroutines
+	if afterGoroutines-initialGoroutines > 5 {
+		t.Errorf("Leaked goroutines after Process(): before=%d, after=%d", initialGoroutines, afterGoroutines)
+	}
+}
+
+// TestPipelineCancelNoDeadlock verifies that cancelling the context during
+// active execution drains rawResultQueue and terminates all workers without deadlocking.
+func TestPipelineCancelNoDeadlock(t *testing.T) {
+	lines := make([]string, 1000)
+	for i := 0; i < 1000; i++ {
+		lines[i] = fmt.Sprintf("user%d@domain.com:pass", i)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	fn := func(line *Line) ([]byte, error) {
+		time.Sleep(10 * time.Millisecond)
+		return []byte("ok"), nil
+	}
+
+	go func() {
+		time.Sleep(30 * time.Millisecond)
+		cancel() // Cancel mid-flight
+	}()
+
+	done := make(chan struct{})
+	go func() {
+		_, _ = Process(ctx, lines, fn, WithWorkers(50), WithAutoTune(false), WithKeyboard(false))
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Succeeded in exiting cleanly without deadlock
+	case <-time.After(3 * time.Second):
+		t.Fatal("Deadlock detected: Process did not terminate after context cancellation!")
+	}
+}
+
+
 
