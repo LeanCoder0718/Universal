@@ -89,3 +89,4 @@ func TestReadInt_LettersThenEOFReturnsDefault(t *testing.T) {
 		t.Fatalf("Expected default value 15 when EOF hit after invalid input, got %d", res)
 	}
 }
+

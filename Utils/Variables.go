@@ -37,6 +37,7 @@ var (
 	Hit_ChangeEmail      int64
 	Hit_SubDisney        int64
 	Hit_SubVix           int64
+	Hit_SubParamount     int64
 	Hit_Hotmail          int64
 	Hit_Imap             int64
 	HitSkiped            int64
@@ -44,8 +45,10 @@ var (
 	BadLines             int64
 	Free_Disney          int64
 	Free_Vix             int64
+	Free_Paramount       int64
 	Expired_Disney       int64
 	Expired_Vix          int64
+	Expired_Paramount    int64
 	Retry_SendCode       int64
 	NullMsg_ChangeEmail  int64
 	GetCode_ChangeEmail  int64
