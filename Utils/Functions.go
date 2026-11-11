@@ -637,7 +637,7 @@ func EntradaDominio(ChangeEmail bool) ([]string, error) {
 		// Protección: si el usuario ingresó solo el dominio (ej: "@gmail.com" o "gmail.com")
 		// generamos un usuario base aleatorio para que las variantes funcionen correctamente.
 		if localPart == "" {
-			localPart = fmt.Sprintf("example%s", RandomDigits(4, 7))
+			localPart = RandomAlpha(7)
 			fmt.Println()
 			fmt.Printf("   %s\n", Yellow(fmt.Sprintf("➤ [!] No ingresaste un usuario antes del '@'. Se asignó automáticamente: %s@%s", localPart, domainPart)))
 		}
@@ -747,6 +747,34 @@ func RandomString(length int) string {
 	return hex.EncodeToString(b)[:length]
 }
 
+// RandomAlpha genera una cadena de longitud n compuesta por caracteres aleatorios entre mayúsculas y minúsculas (a-z, A-Z).
+func RandomAlpha(length int) string {
+	const lower = "abcdefghijklmnopqrstuvwxyz"
+	const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	const all = lower + upper
+
+	if length <= 0 {
+		return ""
+	}
+
+	b := make([]byte, length)
+	if length >= 2 {
+		b[0] = lower[rand.Intn(len(lower))]
+		b[1] = upper[rand.Intn(len(upper))]
+		for i := 2; i < length; i++ {
+			b[i] = all[rand.Intn(len(all))]
+		}
+		rand.Shuffle(len(b), func(i, j int) {
+			b[i], b[j] = b[j], b[i]
+		})
+	} else {
+		for i := range b {
+			b[i] = all[rand.Intn(len(all))]
+		}
+	}
+	return string(b)
+}
+
 // EmailVariantGenerator genera variaciones dinámicas de correo para evitar colisiones.
 type EmailVariantGenerator struct {
 	local   []rune
@@ -768,11 +796,11 @@ func NewEmailVariantGenerator(email string) *EmailVariantGenerator {
 
 	if at < 0 {
 		// El usuario ingresó solo el dominio sin '@' (ej: "gmail.com")
-		local = []rune(fmt.Sprintf("example%s", RandomDigits(4, 7)))
+		local = []rune(RandomAlpha(7))
 		domain = strings.TrimPrefix(email, "@")
 	} else if at == 0 {
 		// El usuario ingresó solo el dominio con '@' (ej: "@gmail.com")
-		local = []rune(fmt.Sprintf("example%s", RandomDigits(4, 7)))
+		local = []rune(RandomAlpha(7))
 		domain = email[1:]
 	} else {
 		local = []rune(email[:at])
@@ -784,7 +812,7 @@ func NewEmailVariantGenerator(email string) *EmailVariantGenerator {
 		domain = "gmail.com"
 	}
 	if len(local) == 0 {
-		local = []rune(fmt.Sprintf("example%s", RandomDigits(4, 7)))
+		local = []rune(RandomAlpha(7))
 	}
 
 	return &EmailVariantGenerator{
@@ -832,7 +860,7 @@ func (g *EmailVariantGenerator) Forma_1_GMAIL() string {
 
 func (g *EmailVariantGenerator) Forma_2_GMAIL() string {
 	if len(g.local) == 0 {
-		g.local = []rune(fmt.Sprintf("example%s", RandomDigits(4, 7)))
+		g.local = []rune(RandomAlpha(7))
 	}
 	for i := 0; i < 100; i++ {
 		randNum := "+" + RandomDigits(6, 8)
@@ -848,7 +876,7 @@ func (g *EmailVariantGenerator) Forma_2_GMAIL() string {
 
 func (g *EmailVariantGenerator) Forma_3() string {
 	if len(g.local) == 0 {
-		g.local = []rune(fmt.Sprintf("example%s", RandomDigits(4, 7)))
+		g.local = []rune(RandomAlpha(7))
 	}
 	for i := 0; i < 100; i++ {
 		n := len(g.local)

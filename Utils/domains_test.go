@@ -82,6 +82,29 @@ func TestTomarLineaCorreo_DominiosMios(t *testing.T) {
 	}
 }
 
+func TestRandomAlpha(t *testing.T) {
+	for i := 0; i < 50; i++ {
+		s := RandomAlpha(7)
+		if len(s) != 7 {
+			t.Fatalf("expected length 7, got %d (%s)", len(s), s)
+		}
+		hasLower := false
+		hasUpper := false
+		for _, r := range s {
+			if r >= 'a' && r <= 'z' {
+				hasLower = true
+			} else if r >= 'A' && r <= 'Z' {
+				hasUpper = true
+			} else {
+				t.Fatalf("expected only letters, got char %c in %s", r, s)
+			}
+		}
+		if !hasLower || !hasUpper {
+			t.Fatalf("expected both upper and lowercase letters, got %s", s)
+		}
+	}
+}
+
 func TestEmailVariantGenerator_MissingLocalPart_OnlyDomain(t *testing.T) {
 	// Caso 1: Usuario ingresó solo "@gmail.com"
 	FormaGmail = "2"
@@ -90,8 +113,13 @@ func TestEmailVariantGenerator_MissingLocalPart_OnlyDomain(t *testing.T) {
 		t.Fatal("expected non-nil generator for @gmail.com")
 	}
 	email1 := genAtGmail.Next()
-	if !strings.HasPrefix(email1, "example") || !strings.Contains(email1, "+") || !strings.HasSuffix(email1, "@gmail.com") {
-		t.Fatalf("expected generated format example*+*@gmail.com, got: %s", email1)
+	if !strings.Contains(email1, "+") || !strings.HasSuffix(email1, "@gmail.com") {
+		t.Fatalf("expected generated format *+*@gmail.com, got: %s", email1)
+	}
+	// El usuario base debe tener longitud 7
+	parts := strings.Split(email1, "+")
+	if len(parts[0]) != 7 {
+		t.Fatalf("expected 7-char random base user, got '%s' (len %d)", parts[0], len(parts[0]))
 	}
 
 	// Caso 2: Usuario ingresó solo el dominio sin arroba "gmail.com"
