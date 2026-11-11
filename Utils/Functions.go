@@ -617,7 +617,32 @@ func EntradaDominio(ChangeEmail bool) ([]string, error) {
 		fmt.Printf("   %s\n", WhiteColor("En caso que sea diferente, el resultado será así: example@me.es = exa+12345mple@me.es o e+789456xample@me.es"))
 		fmt.Printf("   %s\n\n", WhiteColor("SI NO ESTÁS DE ACUERDO CON ESTA CONFIGURACIÓN, PORFAVOR DIGITE MANUALMENTE EN MyDomains.txt"))
 
-		dominioGenerado = ReadString(Red("  → ") +WhiteColor("Ingrese el dominio: "))
+		input := strings.TrimSpace(ReadString(Red("  → ") + WhiteColor("Ingrese el dominio: ")))
+
+		var localPart, domainPart string
+		if strings.Contains(input, "@") {
+			parts := strings.SplitN(input, "@", 2)
+			localPart = strings.TrimSpace(parts[0])
+			domainPart = strings.TrimSpace(parts[1])
+		} else {
+			localPart = ""
+			domainPart = input
+		}
+
+		domainPart = strings.TrimPrefix(domainPart, "@")
+		if domainPart == "" {
+			domainPart = "gmail.com"
+		}
+
+		// Protección: si el usuario ingresó solo el dominio (ej: "@gmail.com" o "gmail.com")
+		// generamos un usuario base aleatorio para que las variantes funcionen correctamente.
+		if localPart == "" {
+			localPart = fmt.Sprintf("example%s", RandomDigits(4, 7))
+			fmt.Println()
+			fmt.Printf("   %s\n", Yellow(fmt.Sprintf("➤ [!] No ingresaste un usuario antes del '@'. Se asignó automáticamente: %s@%s", localPart, domainPart)))
+		}
+
+		dominioGenerado = localPart + "@" + domainPart
 
 		if strings.Contains(strings.ToLower(dominioGenerado), "@gmail.com") {
 			fmt.Println()
@@ -732,15 +757,36 @@ type EmailVariantGenerator struct {
 
 // NewEmailVariantGenerator crea un nuevo generador de variantes de correo.
 func NewEmailVariantGenerator(email string) *EmailVariantGenerator {
+	email = strings.TrimSpace(email)
+	if email == "" {
+		email = "@gmail.com"
+	}
+
 	at := strings.IndexRune(email, '@')
-	if at <= 0 {
-		return nil
+	var local []rune
+	var domain string
+
+	if at < 0 {
+		// El usuario ingresó solo el dominio sin '@' (ej: "gmail.com")
+		local = []rune(fmt.Sprintf("example%s", RandomDigits(4, 7)))
+		domain = strings.TrimPrefix(email, "@")
+	} else if at == 0 {
+		// El usuario ingresó solo el dominio con '@' (ej: "@gmail.com")
+		local = []rune(fmt.Sprintf("example%s", RandomDigits(4, 7)))
+		domain = email[1:]
+	} else {
+		local = []rune(email[:at])
+		domain = email[at+1:]
 	}
-	local := []rune(email[:at])
-	domain := email[at+1:]
+
+	domain = strings.TrimSpace(domain)
 	if len(domain) == 0 {
-		return nil
+		domain = "gmail.com"
 	}
+	if len(local) == 0 {
+		local = []rune(fmt.Sprintf("example%s", RandomDigits(4, 7)))
+	}
+
 	return &EmailVariantGenerator{
 		local:   local,
 		domain:  domain,
@@ -785,6 +831,9 @@ func (g *EmailVariantGenerator) Forma_1_GMAIL() string {
 }
 
 func (g *EmailVariantGenerator) Forma_2_GMAIL() string {
+	if len(g.local) == 0 {
+		g.local = []rune(fmt.Sprintf("example%s", RandomDigits(4, 7)))
+	}
 	for i := 0; i < 100; i++ {
 		randNum := "+" + RandomDigits(6, 8)
 		email := string(g.local) + randNum + "@" + g.domain
@@ -798,6 +847,9 @@ func (g *EmailVariantGenerator) Forma_2_GMAIL() string {
 }
 
 func (g *EmailVariantGenerator) Forma_3() string {
+	if len(g.local) == 0 {
+		g.local = []rune(fmt.Sprintf("example%s", RandomDigits(4, 7)))
+	}
 	for i := 0; i < 100; i++ {
 		n := len(g.local)
 		var b strings.Builder

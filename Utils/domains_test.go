@@ -81,3 +81,47 @@ func TestTomarLineaCorreo_DominiosMios(t *testing.T) {
 		t.Fatalf("expected 2 remaining domains, got %d", len(DominiosMios))
 	}
 }
+
+func TestEmailVariantGenerator_MissingLocalPart_OnlyDomain(t *testing.T) {
+	// Caso 1: Usuario ingresó solo "@gmail.com"
+	FormaGmail = "2"
+	genAtGmail := NewEmailVariantGenerator("@gmail.com")
+	if genAtGmail == nil {
+		t.Fatal("expected non-nil generator for @gmail.com")
+	}
+	email1 := genAtGmail.Next()
+	if !strings.HasPrefix(email1, "example") || !strings.Contains(email1, "+") || !strings.HasSuffix(email1, "@gmail.com") {
+		t.Fatalf("expected generated format example*+*@gmail.com, got: %s", email1)
+	}
+
+	// Caso 2: Usuario ingresó solo el dominio sin arroba "gmail.com"
+	genGmail := NewEmailVariantGenerator("gmail.com")
+	if genGmail == nil {
+		t.Fatal("expected non-nil generator for gmail.com")
+	}
+	email2 := genGmail.Next()
+	if !strings.HasSuffix(email2, "@gmail.com") {
+		t.Fatalf("expected @gmail.com suffix, got: %s", email2)
+	}
+
+	// Caso 3: Dominio personalizado con arroba "@outlook.com"
+	FormaGmail = "3"
+	genCustom := NewEmailVariantGenerator("@outlook.com")
+	if genCustom == nil {
+		t.Fatal("expected non-nil generator for @outlook.com")
+	}
+	email3 := genCustom.Next()
+	if !strings.Contains(email3, "+") || !strings.HasSuffix(email3, "@outlook.com") {
+		t.Fatalf("expected custom inserted '+' format, got: %s", email3)
+	}
+
+	// Caso 4: Cadena vacía
+	genEmpty := NewEmailVariantGenerator("")
+	if genEmpty == nil {
+		t.Fatal("expected non-nil generator for empty string")
+	}
+	email4 := genEmpty.Next()
+	if !strings.HasSuffix(email4, "@gmail.com") {
+		t.Fatalf("expected fallback @gmail.com suffix, got: %s", email4)
+	}
+}
