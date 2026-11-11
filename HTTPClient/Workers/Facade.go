@@ -275,16 +275,28 @@ func WithNoInternalRetries() PoolOption {
 	return WithInternalRetries(1)
 }
 
+// WithSessionOptions permite adjuntar opciones adicionales de HTTPClient.Session
+// al pool (por ejemplo WithTransportFactory para pruebas unitarias deterministas).
+func WithSessionOptions(opts ...HTTPClient.Option) PoolOption {
+	return func(cfg *HTTPClient.Config) {
+		cfg.SessionOptions = append(cfg.SessionOptions, opts...)
+	}
+}
+
 // QuickStart crea un pool HTTP listo para producción auto-calibrado automáticamente según poolSize.
 func QuickStart(poolSize int, proxies []string, proxyType string, maxRetries int, poolOpts ...PoolOption) (*Pool, error) {
+	if maxRetries < 0 {
+		return nil, fmt.Errorf("workers: maxRetries no puede ser negativo (%d): %w", maxRetries, HTTPClient.ErrInvalidConfig)
+	}
+
 	cfg := HTTPClient.Default()
 	AutoTuneConfig(cfg, poolSize)
 	cfg.Debug = false
 
-	if maxRetries <= 0 {
-		maxRetries = 1
-	}
-	cfg.Retry.MaxAttempts = 1 // 1 intento por defecto a nivel HTTP para evitar multiplicación oculta con el Pool
+	// Contrato: maxRetries define los reintentos adicionales por petición HTTP individual.
+	// MaxAttempts = maxRetries + 1.
+	cfg.Retry.MaxRetries = maxRetries
+	cfg.Retry.MaxAttempts = maxRetries + 1
 	cfg.Retry.WaitMin = 100 * time.Millisecond
 	cfg.Retry.WaitMax = 1 * time.Second
 	cfg.Retry.JitterFactor = 0.3
@@ -356,6 +368,9 @@ func QuickStart(poolSize int, proxies []string, proxyType string, maxRetries int
 //	})
 //	pool, _ := Workers.QuickStartWithProfile(100, proxies, "http", 3, manager)
 func QuickStartWithProfile(poolSize int, proxies []string, proxyType string, maxRetries int, profileMgr *Profiles.Manager, poolOpts ...PoolOption) (*Pool, error) {
+	if maxRetries < 0 {
+		return nil, fmt.Errorf("workers: maxRetries no puede ser negativo (%d): %w", maxRetries, HTTPClient.ErrInvalidConfig)
+	}
 	if profileMgr == nil {
 		return nil, fmt.Errorf("workers: %w, usa QuickStart para el modo legacy", HTTPClient.ErrNilProfileManager)
 	}
@@ -364,10 +379,10 @@ func QuickStartWithProfile(poolSize int, proxies []string, proxyType string, max
 	AutoTuneConfig(cfg, poolSize)
 	cfg.Debug = false
 
-	if maxRetries <= 0 {
-		maxRetries = 1
-	}
-	cfg.Retry.MaxAttempts = 1 // 1 intento por defecto a nivel HTTP para evitar multiplicación oculta con el Pool
+	// Contrato: maxRetries define los reintentos adicionales por petición HTTP individual.
+	// MaxAttempts = maxRetries + 1.
+	cfg.Retry.MaxRetries = maxRetries
+	cfg.Retry.MaxAttempts = maxRetries + 1
 	cfg.Retry.WaitMin = 100 * time.Millisecond
 	cfg.Retry.WaitMax = 1 * time.Second
 	cfg.Retry.JitterFactor = 0.3
@@ -408,15 +423,18 @@ func QuickStartWithProfile(poolSize int, proxies []string, proxyType string, max
 
 // QuickStartWithHTTPConfig crea un pool HTTP permitiendo especificar la configuración de versiones HTTP (HTTP/1.1, HTTP/2, HTTP/3).
 func QuickStartWithHTTPConfig(poolSize int, proxies []string, proxyType string, maxRetries int, httpCfg HTTPClient.HTTPConfig, profileMgr *Profiles.Manager) (*Pool, error) {
+	if maxRetries < 0 {
+		return nil, fmt.Errorf("workers: maxRetries no puede ser negativo (%d): %w", maxRetries, HTTPClient.ErrInvalidConfig)
+	}
 	cfg := HTTPClient.Default()
 	AutoTuneConfig(cfg, poolSize)
 	cfg.HTTP = httpCfg
 	cfg.Debug = false
 
-	if maxRetries <= 0 {
-		maxRetries = 1
-	}
-	cfg.Retry.MaxAttempts = 1
+	// Contrato: maxRetries define los reintentos adicionales por petición HTTP individual.
+	// MaxAttempts = maxRetries + 1.
+	cfg.Retry.MaxRetries = maxRetries
+	cfg.Retry.MaxAttempts = maxRetries + 1
 	cfg.Retry.WaitMin = 100 * time.Millisecond
 	cfg.Retry.WaitMax = 1 * time.Second
 	cfg.Retry.JitterFactor = 0.3

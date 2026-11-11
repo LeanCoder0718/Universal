@@ -423,7 +423,7 @@ func (j *Jar) Reset() {
 	j.generation.Add(1)
 }
 
-// Snapshot expone una vista de solo lectura, útil para debug/logging.
+// Snapshot expone una vista de solo lectura, útil para debug/logging y puntos de restauración.
 func (j *Jar) Snapshot() map[string][]Cookie {
 	j.mu.RLock()
 	defer j.mu.RUnlock()
@@ -436,4 +436,27 @@ func (j *Jar) Snapshot() map[string][]Cookie {
 		out[domain] = list
 	}
 	return out
+}
+
+// Restore restaura el estado del jar exactamente a un snapshot previo,
+// descartando cualquier cookie modificada o añadida por peticiones fallidas posteriores.
+func (j *Jar) Restore(snapshot map[string][]Cookie) {
+	if j == nil {
+		return
+	}
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	newBuckets := make(map[string]*domainBucket, len(snapshot))
+	for domain, list := range snapshot {
+		b := &domainBucket{
+			cookies: make(map[string]*Cookie, len(list)),
+		}
+		for _, c := range list {
+			cCopy := c
+			b.cookies[cookieIdentity(&cCopy)] = &cCopy
+		}
+		newBuckets[domain] = b
+	}
+	j.buckets = newBuckets
+	j.generation.Add(1)
 }

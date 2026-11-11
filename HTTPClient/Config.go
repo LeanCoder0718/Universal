@@ -61,8 +61,9 @@ type Config struct {
 	Transport TransportConfig
 	Browser   BrowserConfig
 	Worker    WorkerConfig
-	Lifecycle LifecycleConfig
-	Debug     bool
+	Lifecycle      LifecycleConfig
+	Debug          bool
+	SessionOptions []Option
 }
 
 type CookieConfig struct {
@@ -148,7 +149,8 @@ func Default() *Config {
 			DisableHostOnly:      false,
 		},
 		Retry: retry.RetryConfig{
-			MaxAttempts:  3,
+			MaxRetries:   3,
+			MaxAttempts:  4, // Contrato: 3 reintentos = 1 intento inicial + 3 reintentos = 4 intentos en total
 			WaitMin:      1 * time.Second,
 			WaitMax:      5 * time.Second,
 			JitterFactor: 0.2,
@@ -241,7 +243,10 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("config: Transport.MaxIdleConnsPerHost no puede ser negativo")
 	}
 	if c.Retry.MaxAttempts < 0 {
-		return fmt.Errorf("config: Retry.MaxAttempts no puede ser negativo")
+		return fmt.Errorf("config: Retry.MaxAttempts no puede ser negativo (%d): %w", c.Retry.MaxAttempts, ErrInvalidConfig)
+	}
+	if c.Retry.MaxRetries < 0 {
+		return fmt.Errorf("config: Retry.MaxRetries no puede ser negativo (%d): %w", c.Retry.MaxRetries, ErrInvalidConfig)
 	}
 	if c.Cookie.DisableHostOnly {
 		// No es un error, pero se documenta como advertencia explícita
@@ -262,5 +267,11 @@ func (c *Config) Clone() *Config {
 		return nil
 	}
 	clone := *c
+	if len(c.Browser.AllowedSessionHosts) > 0 {
+		clone.Browser.AllowedSessionHosts = append([]string{}, c.Browser.AllowedSessionHosts...)
+	}
+	if len(c.SessionOptions) > 0 {
+		clone.SessionOptions = append([]Option{}, c.SessionOptions...)
+	}
 	return &clone
 }

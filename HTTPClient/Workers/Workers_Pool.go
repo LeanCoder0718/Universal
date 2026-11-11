@@ -112,26 +112,32 @@ func New(cfg *HTTPClient.Config, opts PoolOptions, sessionOpts ...HTTPClient.Opt
 
 	cfgCopy := *cfg
 	maxRetries := opts.MaxJobRetries
-	if maxRetries <= 0 {
-		maxRetries = cfgCopy.Retry.MaxAttempts
+	if maxRetries < 0 {
+		return nil, fmt.Errorf("workers: maxRetries no puede ser negativo (%d): %w", maxRetries, HTTPClient.ErrInvalidConfig)
 	}
-	if maxRetries <= 0 {
-		maxRetries = 1
+	if maxRetries == 0 && cfgCopy.Retry.MaxRetries > 0 {
+		maxRetries = cfgCopy.Retry.MaxRetries
+	}
+	if cfgCopy.Retry.MaxRetries > 0 && cfgCopy.Retry.MaxAttempts <= 0 {
+		cfgCopy.Retry.MaxAttempts = cfgCopy.Retry.MaxRetries + 1
+	}
+	if cfgCopy.Retry.MaxAttempts <= 0 {
+		cfgCopy.Retry.MaxAttempts = 4 // Default: 3 reintentos = 4 intentos
+		cfgCopy.Retry.MaxRetries = 3
 	}
 
-	// Reintentos limpios por petición (Session.Do): por defecto 1 intento si no está configurado
-	// para evitar multiplicación oculta contra los reintentos del orquestador.
-	if cfgCopy.Retry.MaxAttempts <= 0 {
-		cfgCopy.Retry.MaxAttempts = 1
-	}
+	allSessionOpts := append([]HTTPClient.Option{}, cfgCopy.SessionOptions...)
+	allSessionOpts = append(allSessionOpts, sessionOpts...)
 
 	p := &Pool{
 		cfg:         &cfgCopy,
-		sessionOpts: sessionOpts,
+		sessionOpts: allSessionOpts,
 		maxRetries:  maxRetries,
 	}
 	if cfgCopy.Worker.RateLimitPerHost > 0 {
 		p.limiter = HTTPClient.NewRateLimiter(cfgCopy.Worker.RateLimitPerHost, cfgCopy.Worker.RateLimitBurst)
+		allSessionOpts = append(allSessionOpts, HTTPClient.WithRateLimiter(p.limiter))
+		p.sessionOpts = allSessionOpts
 	}
 
 	maxInFlight := opts.MaxInFlight
@@ -143,7 +149,7 @@ func New(cfg *HTTPClient.Config, opts PoolOptions, sessionOpts ...HTTPClient.Opt
 	}
 	p.sem = make(chan struct{}, maxInFlight)
 
-	lManager, err := HTTPClient.NewLifecycleManager(&cfgCopy, maxInFlight, sessionOpts...)
+	lManager, err := HTTPClient.NewLifecycleManager(&cfgCopy, maxInFlight, allSessionOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("workers: creando lifecycle manager: %w", err)
 	}
@@ -213,12 +219,6 @@ func (p *Pool) Do(ctx context.Context, spec HTTPClient.Spec) (*HTTPClient.Result
 		return nil, HTTPClient.ErrPoolClosed
 	}
 
-	if p.limiter != nil {
-		if err := p.limiter.Wait(ctx, spec.URL); err != nil {
-			return nil, fmt.Errorf("workers: %w: %v", HTTPClient.ErrRateLimitExceeded, err)
-		}
-	}
-
 	handle, err := p.acquireSession(ctx)
 	if err != nil {
 		p.connErrors.Add(1)
@@ -247,13 +247,58 @@ func (p *Pool) Do(ctx context.Context, spec HTTPClient.Spec) (*HTTPClient.Result
 	return res, execErr
 }
 
+// Run ejecuta un Job con una sesión gestionada del pool.
+// Las peticiones HTTP individuales ejecutadas dentro del Job (mediante s.Do)
+// heredan automáticamente el maxRetries del pool y reintentan únicamente el paso fallido.
+// El callback del Job se ejecuta exactamente una vez, evitando la multiplicación de intentos
+// y preservando las variables y pasos ya exitosos.
 func (p *Pool) Run(ctx context.Context, job Job) (*HTTPClient.Result, error) {
-	return p.RunWithRetry(ctx, p.maxRetries, job)
+	if p.closed.Load() {
+		return nil, HTTPClient.ErrPoolClosed
+	}
+	if err := p.acquireSlot(ctx); err != nil {
+		return nil, fmt.Errorf("workers: backpressure - %w: %v", HTTPClient.ErrBackpressureTimeout, err)
+	}
+	defer p.releaseSlot()
+
+	if p.closed.Load() {
+		return nil, HTTPClient.ErrPoolClosed
+	}
+
+	handle, err := p.acquireSession(ctx)
+	if err != nil {
+		p.connErrors.Add(1)
+		return nil, fmt.Errorf("workers: obteniendo sesión: %w", err)
+	}
+
+	var execErr error
+	defer func() {
+		p.releaseSession(handle, execErr)
+	}()
+
+	res, execErr := job(ctx, handle.Session)
+	if execErr != nil {
+		if errors.Is(execErr, HTTPClient.ErrMaxRetriesExceeded) || errors.Is(execErr, context.DeadlineExceeded) {
+			p.connErrors.Add(1)
+		}
+	} else if res != nil && res.Response != nil {
+		if len(res.Response.BodyBytes) > 0 {
+			p.bytesTransferred.Add(uint64(len(res.Response.BodyBytes)))
+		}
+		switch res.Response.StatusCode {
+		case 502, 504:
+			p.proxy502Errors.Add(1)
+		case 403, 429:
+			p.target403Errors.Add(1)
+		}
+	}
+	return res, execErr
 }
 
-// RunWithRetry ejecuta un Job con reintentos a nivel de intento (attempt-level routing),
-// garantizando que cada intento fallido cambie de proxy, excluya los proxies ya probados
-// en este intento, aplique backoff con jitter y reporte métricas de salud al pool.
+// RunWithRetry ejecuta un Job con reintentos explícitos a nivel de Job completo (callback).
+// NOTA: Esta función se mantiene por compatibilidad para flujos que requieran reiniciar
+// deliberadamente todo el Job desde cero ante un fallo irrecuperable. Para peticiones normales,
+// use Run(ctx, job), el cual reintenta únicamente la petición fallida sin repetir pasos previos.
 func (p *Pool) RunWithRetry(ctx context.Context, maxAttempts int, job Job) (*HTTPClient.Result, error) {
 	if p.closed.Load() {
 		return nil, HTTPClient.ErrPoolClosed
@@ -397,7 +442,7 @@ func (p *Pool) GetDetailedMetrics() HTTPDetailedMetrics {
 		pending = 0
 	}
 
-	totReqs, succReqs, failReqs, resets := p.Metrics()
+	totReqs, succReqs, failReqs, _ := p.Metrics()
 
 	p.rpsMu.Lock()
 	now := time.Now()
@@ -457,7 +502,7 @@ func (p *Pool) GetDetailedMetrics() HTTPDetailedMetrics {
 		PendingRequests:  pending,
 		ExecutingReqs:    executing,
 		Timeouts:         p.timeouts.Load(),
-		Retries:          resets,
+		Retries:          p.retries.Load(),
 		ConnErrors:       p.connErrors.Load(),
 		Proxy502Errors:   p.proxy502Errors.Load(),
 		Target403Errors:  p.target403Errors.Load(),

@@ -261,9 +261,9 @@ func TestWorkerPool_MassiveConcurrentExecution(t *testing.T) {
 }
 
 // TestWorkerPool_InternalRetriesDecoupled verifica que QuickStart configure
-// cfg.Retry.MaxAttempts = 1 por defecto para evitar multiplicación de reintentos
-// (ej. 4 rondas de pipeline * 3 reintentos HTTP = 12 intentos), manteniendo maxRetries
-// desacoplado a nivel de Job en el pool.
+// cfg.Retry.MaxRetries = 3 y cfg.Retry.MaxAttempts = 4 (1 inicial + 3 reintentos)
+// para aplicar reintentos por petición de forma transparente, mientras que WithNoInternalRetries
+// fija MaxAttempts = 1 para ejecuciones estrictas de 1 solo intento.
 func TestWorkerPool_InternalRetriesDecoupled(t *testing.T) {
 	pool, err := QuickStart(10, []string{"127.0.0.1:8080:u:p"}, "http", 3)
 	if err != nil {
@@ -272,10 +272,10 @@ func TestWorkerPool_InternalRetriesDecoupled(t *testing.T) {
 	defer pool.Close()
 
 	if pool.maxRetries != 3 {
-		t.Fatalf("esperado pool.maxRetries = 3 a nivel de Job, obtenido %d", pool.maxRetries)
+		t.Fatalf("esperado pool.maxRetries = 3, obtenido %d", pool.maxRetries)
 	}
-	if pool.cfg.Retry.MaxAttempts != 1 {
-		t.Fatalf("esperado cfg.Retry.MaxAttempts = 1 a nivel HTTP interno para evitar multiplicación, obtenido %d", pool.cfg.Retry.MaxAttempts)
+	if pool.cfg.Retry.MaxAttempts != 4 {
+		t.Fatalf("esperado cfg.Retry.MaxAttempts = 4 (1 inicial + 3 reintentos), obtenido %d", pool.cfg.Retry.MaxAttempts)
 	}
 
 	// Con WithNoInternalRetries explícito

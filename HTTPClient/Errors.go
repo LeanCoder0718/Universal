@@ -50,7 +50,32 @@ var (
 
 	// ErrChallengeDetected indica que el servidor retornó una página de desafío anti-bot (Cloudflare, Akamai, DataDome, etc.).
 	ErrChallengeDetected = errors.New("httpclient: anti-bot challenge page detected")
+
+	// ErrInvalidConfig indica un parámetro de configuración inválido (ej. maxRetries < 0).
+	ErrInvalidConfig = errors.New("httpclient: invalid configuration parameter")
 )
+
+// MaxRetriesError describe de forma estructurada el agotamiento del presupuesto de reintentos.
+// Soporta errors.Is(err, ErrMaxRetriesExceeded) y errors.Unwrap() para acceder a la causa original.
+type MaxRetriesError struct {
+	Attempts int
+	LastErr  error
+}
+
+func (e *MaxRetriesError) Error() string {
+	if e.LastErr != nil {
+		return fmt.Sprintf("httpclient: agotados %d intentos (%v): %v", e.Attempts, ErrMaxRetriesExceeded, e.LastErr)
+	}
+	return fmt.Sprintf("httpclient: agotados %d intentos: %v", e.Attempts, ErrMaxRetriesExceeded)
+}
+
+func (e *MaxRetriesError) Is(target error) bool {
+	return target == ErrMaxRetriesExceeded
+}
+
+func (e *MaxRetriesError) Unwrap() error {
+	return e.LastErr
+}
 
 // RequestError enriquece un error con el contexto detallado de la petición (intento, proxy, URL).
 type RequestError struct {

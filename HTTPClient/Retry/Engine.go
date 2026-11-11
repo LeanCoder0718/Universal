@@ -13,6 +13,7 @@ import (
 
 type RetryConfig struct {
 	MaxAttempts  int
+	MaxRetries   int // Si MaxRetries > 0 y MaxAttempts == 0, equivale a MaxAttempts = MaxRetries + 1
 	WaitMin      time.Duration
 	WaitMax      time.Duration
 	JitterFactor float64
@@ -53,6 +54,7 @@ type Signal struct {
 	BodySample    []byte
 	Method        string
 	Idempotent    bool // true = el caller autoriza retry aunque no sea GET/HEAD/...
+	MaxAttempts   int  // Intentos máximos autorizados para esta petición específica (override por request)
 	BodyComplete  bool
 	BodyTruncated bool
 	RetryAfter    time.Duration
@@ -166,22 +168,15 @@ func (d *DefaultClassifier) Classify(s Signal) ErrorClass {
 		}
 		errStr := strings.ToLower(s.NetErr.Error())
 
-		// Mejora 1: Discriminar fallos de gateway/proxy de fallos de huella TLS con el servidor
+		// Discriminar fallos de gateway/proxy de fallos de red y huella TLS
 		isProxyErr := strings.Contains(errStr, "proxy") ||
 			strings.Contains(errStr, "socks") ||
 			strings.Contains(errStr, "gateway") ||
 			strings.Contains(errStr, "tunnel") ||
-			strings.Contains(errStr, "connectex") ||
-			strings.Contains(errStr, "awaiting headers") ||
-			strings.Contains(errStr, "timeout exceeded") ||
-			strings.Contains(errStr, "deadline exceeded") ||
-			strings.Contains(errStr, "connection refused") ||
-			strings.Contains(errStr, "connection reset") ||
-			strings.Contains(errStr, "broken pipe") ||
-			strings.Contains(errStr, "eof")
+			strings.Contains(errStr, "connectex")
 
 		if isProxyErr {
-			// El proxy falló, cerró el túnel, fue rechazado o agotó timeout -> rotar proxy (ActionRotateProxy)
+			// El proxy falló o cerró el túnel -> rotar proxy (ActionRotateProxy)
 			return ClassBlocked
 		}
 
@@ -193,6 +188,9 @@ func (d *DefaultClassifier) Classify(s Signal) ErrorClass {
 			strings.Contains(errStr, "unrecognized name") {
 			return ClassTLSFingerprint
 		}
+
+		// Errores de transporte estándar (EOF, connection reset, broken pipe, connection refused, timeout).
+		// Son transitorios de red: rotan proxy pero NUNCA borran cookies ni escalan a RebuildIdentity.
 		return ClassTransientNetwork
 	}
 
@@ -206,7 +204,21 @@ func (d *DefaultClassifier) Classify(s Signal) ErrorClass {
 
 	// 2. Detección de pantallas de desafío anti-bot en el cuerpo (incluso si el código es 200 o 503)
 	if containsAny(s.BodySample, d.ChallengeKeywords) {
-		return ClassChallenge
+		// Para respuestas 200 OK, prevenir falsos positivos con frases genéricas (ej. "<noscript>Enable JavaScript</noscript>")
+		// exigiendo que contenga una firma técnica anti-bot o que no sea un 200 OK ordinario.
+		isGenericKeywordOnly := false
+		if s.StatusCode >= 200 && s.StatusCode < 300 {
+			hasSpecificAntiBot := containsAny(s.BodySample, []string{
+				"challenge-platform", "_cf_chl", "turnstile", "datadome", "incapsula", "radware", "rdwr",
+				"verifying you are human", "verify you are human", "attention required", "_event_transid",
+			})
+			if !hasSpecificAntiBot {
+				isGenericKeywordOnly = true
+			}
+		}
+		if !isGenericKeywordOnly {
+			return ClassChallenge
+		}
 	}
 
 	// 3. Body incompleto nunca es éxito, aunque el status sea 2xx.
@@ -292,13 +304,28 @@ func (e *Engine) Decide(attempt int, s Signal) Decision {
 	if class == ClassPermanent || class == ClassBusinessLogic {
 		return Decision{Class: class, Action: ActionNone, Retry: false, Reason: reasonFor(class)}
 	}
-	if e.cfg.MaxAttempts > 0 && attempt >= e.cfg.MaxAttempts {
+	maxAttempts := s.MaxAttempts
+	if maxAttempts <= 0 {
+		maxAttempts = e.cfg.MaxAttempts
+		if maxAttempts <= 0 && e.cfg.MaxRetries > 0 {
+			maxAttempts = e.cfg.MaxRetries + 1
+		}
+	}
+	if maxAttempts > 0 && attempt >= maxAttempts {
 		return Decision{Class: class, Action: ActionNone, Retry: false, Reason: "max attempts exhausted"}
 	}
 
-	// No reintentar métodos no idempotentes salvo autorización explícita o cuando el fallo
-	// sea a nivel de transporte/red/proxy/WAF (la petición no se completó en el servidor de destino).
-	if !s.Idempotent && !isIdempotentMethod(s.Method) && class != ClassBlocked && class != ClassTransientNetwork && class != ClassTLSFingerprint && class != ClassChallenge {
+	// No reintentar métodos no idempotentes salvo cuando el caller lo autorice (Idempotent: true),
+	// cuando el fallo sea a nivel de transporte/red/proxy/WAF/TLS (la petición no se completó en el servidor),
+	// o cuando el servidor señale sobrecarga/límite de tasa (ClassRateLimited 429, ClassServerOverloaded 503).
+	isTransportOrWAFOrRateLimit := class == ClassBlocked ||
+		class == ClassTransientNetwork ||
+		class == ClassTLSFingerprint ||
+		class == ClassChallenge ||
+		class == ClassRateLimited ||
+		class == ClassServerOverloaded
+
+	if !s.Idempotent && !isIdempotentMethod(s.Method) && !isTransportOrWAFOrRateLimit {
 		return Decision{
 			Class:  class,
 			Action: ActionNone,

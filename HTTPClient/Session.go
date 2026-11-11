@@ -60,6 +60,7 @@ type Session struct {
 	connMgr        *ConnectionManager
 	currentGeoKey ConnectionKey
 	stickyID      string
+	limiter       *PerHost
 	geoPolicy     *GeoRoute.GeoPolicy
 	opts          sessionParams
 	storage       map[string]any
@@ -93,8 +94,14 @@ type sessionParams struct {
 	profileManager  *Profiles.Manager     // nil = usa ProfileSpec o sistema legacy
 	allowedHosts    []string
 	enableSessionID *bool
+	limiter         *PerHost
 	geoPolicy       *GeoRoute.GeoPolicy
 	err             error
+}
+
+// WithRateLimiter asocia un limitador de tasa de peticiones por host a la sesión.
+func WithRateLimiter(l *PerHost) Option {
+	return func(p *sessionParams) { p.limiter = l }
 }
 
 // WithGeoPolicy asigna una política regional explícita e independiente a la sesión,
@@ -287,10 +294,15 @@ func NewSession(cfg *Config, opts ...Option) (*Session, error) {
 		proxyPool:   pool,
 		connMgr:     params.connMgr,
 		geoPolicy:   params.geoPolicy,
+		limiter:     params.limiter,
 		opts:        params,
 		clientCache:    make(map[string]Client),
 		clientLastUsed: make(map[string]time.Time),
 		stickyID:       NewStickyID(),
+	}
+
+	if s.limiter == nil && cfg.Worker.RateLimitPerHost > 0 {
+		s.limiter = NewRateLimiter(cfg.Worker.RateLimitPerHost, cfg.Worker.RateLimitBurst)
 	}
 
 	if err := s.buildClient(); err != nil {
@@ -388,17 +400,40 @@ func (s *Session) buildClient() error {
 	return nil
 }
 
-// reconnectLocked: nueva conexión / nuevo client con el mismo jar.
+// reconnectLocked: nueva conexión / nuevo client con el mismo jar,
+// invalidando previamente el cliente averiado de la caché para forzar la creación de sockets frescos.
 func (s *Session) reconnectLocked() error {
+	var entry *Entry
+	if s.currentProxy != nil {
+		entry = s.currentProxy
+	} else if s.proxyPool != nil {
+		resolved, err := s.proxyPool.Resolve()
+		if err == nil {
+			entry = &resolved
+		}
+	}
+	key := fmt.Sprintf("direct_redir=%v", s.cfg.Browser.FollowRedirects)
+	if entry != nil {
+		key = fmt.Sprintf("%s@%s_redir=%v", entry.key(), entry.User, s.cfg.Browser.FollowRedirects)
+	}
+	if old, ok := s.clientCache[key]; ok && old != nil {
+		old.CloseIdleConnections()
+		delete(s.clientCache, key)
+		delete(s.clientLastUsed, key)
+	}
 	return s.buildClient()
 }
 
 // refreshLocked: identidad nueva ⇒ jar NUEVO.
-func (s *Session) refreshLocked() error {
+func (s *Session) refreshLocked(ctx ...context.Context) error {
+	reqCtx := context.Background()
+	if len(ctx) > 0 && ctx[0] != nil {
+		reqCtx = ctx[0]
+	}
 	var id Identity
 	var err error
 	if s.opts.profileManager != nil {
-		spec, pErr := s.opts.profileManager.GetProfile(context.Background())
+		spec, pErr := s.opts.profileManager.GetProfile(reqCtx)
 		if pErr != nil {
 			return fmt.Errorf("browser: refrescando perfil desde ProfileManager: %w", pErr)
 		}
@@ -438,13 +473,18 @@ func (s *Session) refreshLocked() error {
 // RotateProxy API pública: rota el cliente de la sesión seleccionando un proxy
 // saludable del pool, excluyendo preferentemente el proxy actual.
 func (s *Session) RotateProxy() error {
+	return s.RotateProxyContext(context.Background())
+}
+
+// RotateProxyContext rota el cliente de la sesión respetando el contexto provisto.
+func (s *Session) RotateProxyContext(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.rotateProxyLocked(false)
+	return s.rotateProxyLocked(false, ctx)
 }
 
 // rotateProxyLocked reconstruye el transport seleccionando un proxy distinto si hay pool.
-func (s *Session) rotateProxyLocked(clearCookies bool) error {
+func (s *Session) rotateProxyLocked(clearCookies bool, ctx ...context.Context) error {
 	if clearCookies && s.jar != nil {
 		s.jar.Reset()
 	}
@@ -454,11 +494,18 @@ func (s *Session) rotateProxyLocked(clearCookies bool) error {
 		if s.currentProxy != nil {
 			excluded = append(excluded, s.currentProxy.Host, s.currentProxy.key())
 		}
-		node, _, err := s.proxyPool.Acquire(context.Background(), AcquirePolicy{
+		reqCtx := context.Background()
+		if len(ctx) > 0 && ctx[0] != nil {
+			reqCtx = ctx[0]
+		}
+		node, _, err := s.proxyPool.Acquire(reqCtx, AcquirePolicy{
 			ExcludedHosts: excluded,
 			AllowFallback: true,
 		})
-		if err == nil && node != nil {
+		if err != nil {
+			return fmt.Errorf("session: rotando proxy: %w", err)
+		}
+		if node != nil {
 			return s.setExplicitProxyLocked(node.Entry)
 		}
 	}
@@ -474,6 +521,11 @@ func (s *Session) reportProxy(st state, latency time.Duration, netOK bool) {
 
 // applyAction aplica la transición de estado solo si generation no cambió.
 func (s *Session) applyAction(gen uint64, action retry.Action, class retry.ErrorClass, preserveCookies ...bool) error {
+	return s.applyActionWithContext(context.Background(), gen, action, class, preserveCookies...)
+}
+
+// applyActionWithContext aplica la transición de estado propagando el contexto de la petición.
+func (s *Session) applyActionWithContext(ctx context.Context, gen uint64, action retry.Action, class retry.ErrorClass, preserveCookies ...bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.generation.Load() != gen {
@@ -491,16 +543,16 @@ func (s *Session) applyAction(gen uint64, action retry.Action, class retry.Error
 		if shouldPreserve {
 			clearCookies = false
 		}
-		return s.rotateProxyLocked(clearCookies)
+		return s.rotateProxyLocked(clearCookies, ctx)
 	case retry.ActionReconnect:
 		return s.reconnectLocked()
 	case retry.ActionRebuildIdentity:
 		if shouldPreserve {
 			// En sesión autenticada con estado, regenerar identidad (TLS/UA) rompería la sesión
 			// en el servidor. Degradamos de forma segura a rotar únicamente el proxy preservando el Jar.
-			return s.rotateProxyLocked(false)
+			return s.rotateProxyLocked(false, ctx)
 		}
-		return s.refreshLocked()
+		return s.refreshLocked(ctx)
 	case retry.ActionWaitSameConn, retry.ActionWaitSameProxy:
 		return nil
 	default:
@@ -620,6 +672,11 @@ func (s *Session) RedactedProxyURL() string {
 // Si el proxy soporta country routing (ej: country-XX), reutiliza o arrienda el cliente HTTP con la nueva salida geográfica.
 // Si el país es vacío o genérico ("XX", "GENERIC"), restablece la sesión al proxy general por defecto sin tag regional.
 func (s *Session) SetGeoCountry(countryCode string) error {
+	return s.SetGeoCountryContext(context.Background(), countryCode)
+}
+
+// SetGeoCountryContext actualiza el país del proxy respetando el contexto de la operación.
+func (s *Session) SetGeoCountryContext(ctx context.Context, countryCode string) error {
 	applyGeo := GeoRoute.ActiveApplyGeo
 	if s.geoPolicy != nil {
 		applyGeo = s.geoPolicy.Enabled
@@ -662,7 +719,10 @@ func (s *Session) SetGeoCountry(countryCode string) error {
 		}
 		proxyType := proxyTypeFrom(s.proxyPool)
 
-		client, pooled, err := s.connMgr.GetClient(context.Background(), normKey, Params{
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		client, pooled, err := s.connMgr.GetClient(ctx, normKey, Params{
 			Transport:       s.cfg.Transport,
 			TLSProfile:      s.profile.TLSProfile,
 			Jar:             s.jar,
@@ -814,7 +874,7 @@ func (s *Session) Do(ctx context.Context, spec Spec) (*Result, error) {
 		s.mu.Lock()
 		var refreshErr error
 		if s.requestCount.Load() >= uint64(maxPerSession) {
-			refreshErr = s.refreshLocked()
+			refreshErr = s.refreshLocked(ctx)
 		}
 		s.mu.Unlock()
 		if refreshErr != nil {
@@ -823,18 +883,44 @@ func (s *Session) Do(ctx context.Context, spec Spec) (*Result, error) {
 	}
 	s.requestCount.Add(1)
 
-	maxAttempts := s.cfg.Retry.MaxAttempts
-	if spec.MaxAttempts > 0 {
-		maxAttempts = spec.MaxAttempts
-	}
-	if spec.NoRetry || maxAttempts <= 0 {
+	// CONTRATO DE REINTENTOS:
+	// Precedencia:
+	// 1. spec.NoRetry -> exactamente 1 intento (0 reintentos)
+	// 2. spec.MaxRetries -> spec.MaxRetries + 1 intentos
+	// 3. spec.MaxAttempts -> spec.MaxAttempts intentos
+	// 4. s.cfg.Retry.MaxRetries -> s.cfg.Retry.MaxRetries + 1 intentos
+	// 5. s.cfg.Retry.MaxAttempts -> s.cfg.Retry.MaxAttempts intentos
+	// 6. Default -> 3 reintentos = 4 intentos
+	maxAttempts := 4
+	if spec.NoRetry {
 		maxAttempts = 1
+	} else if spec.MaxRetries > 0 {
+		maxAttempts = spec.MaxRetries + 1
+	} else if spec.MaxAttempts > 0 {
+		maxAttempts = spec.MaxAttempts
+	} else if s.cfg.Retry.MaxRetries > 0 {
+		maxAttempts = s.cfg.Retry.MaxRetries + 1
+	} else if s.cfg.Retry.MaxAttempts > 0 {
+		maxAttempts = s.cfg.Retry.MaxAttempts
 	}
+
+	// Punto de restauración de cookies: capturamos el estado previo a esta petición
+	var initialCookieSnapshot map[string][]Cookie
+	if s.jar != nil {
+		initialCookieSnapshot = s.jar.Snapshot()
+	}
+
 	var lastResult *Result
 
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		if err := ctx.Err(); err != nil {
 			return nil, err
+		}
+
+		if s.limiter != nil {
+			if err := s.limiter.Wait(ctx, spec.URL); err != nil {
+				return nil, fmt.Errorf("browser: rate limit - %w: %v", ErrRateLimitExceeded, err)
+			}
 		}
 
 		reqTimeout := s.cfg.Transport.RequestTimeout
@@ -849,7 +935,7 @@ func (s *Session) Do(ctx context.Context, spec Spec) (*Result, error) {
 			s.failureCount.Add(1)
 			return nil, err
 		}
-		result, decision := s.attemptWith(attemptCtx, st, spec, attempt)
+		result, decision := s.attemptWith(attemptCtx, st, spec, attempt, maxAttempts)
 		cancel()
 
 		// Liberar el buffer del intento anterior para no acumular memoria (P0 Fix)
@@ -862,24 +948,58 @@ func (s *Session) Do(ctx context.Context, spec Spec) (*Result, error) {
 			s.debugLog(spec, result)
 		}
 
-		if spec.NoRetry || !decision.Retry {
-			if decision.Class == retry.ClassSuccess {
+		isLastAttempt := (attempt == maxAttempts)
+		isSuccess := (decision.Class == retry.ClassSuccess)
+
+		if spec.NoRetry || !decision.Retry || isLastAttempt || isSuccess {
+			if isSuccess {
 				s.successCount.Add(1)
-			} else {
-				s.failureCount.Add(1)
+				// Éxito: las cookies válidas de esta respuesta quedan consolidadas en el Jar
+				return result, nil
+			}
+
+			s.failureCount.Add(1)
+			// En caso de fallo definitivo, revertir el Jar al estado previo a esta petición
+			// para no contaminar pasos posteriores con cookies de error
+			if s.jar != nil {
+				s.jar.Restore(initialCookieSnapshot)
 			}
 
 			rErr := resultErr(result)
-			// En caso de error final, reciclamos el buffer al pool pero conservamos
-			// una copia segura desacoplada en BodyBytes para el llamador (diagnóstico),
-			// evitando data races y fugas de buffers.
 			if rErr != nil && result != nil {
 				result.PreserveBodyForError()
+			}
+			if isLastAttempt && !isSuccess {
+				if rErr == nil && result != nil && result.Err != nil {
+					rErr = result.Err
+				}
+				finalErr := &MaxRetriesError{
+					Attempts: maxAttempts,
+					LastErr:  rErr,
+				}
+				return result, finalErr
 			}
 			return result, rErr
 		}
 
+		// Si vamos a reintentar:
+		// 1. Revertir el Jar al estado inicial previo a la petición para no acumular
+		//    cookies contaminadas del intento fallido
+		if s.jar != nil {
+			s.jar.Restore(initialCookieSnapshot)
+		}
+
+		// 2. Esperar según backoff / Retry-After (respetando cancelación del contexto)
 		if decision.Wait > 0 {
+			if deadline, ok := ctx.Deadline(); ok {
+				if time.Until(deadline) < decision.Wait {
+					s.failureCount.Add(1)
+					if result != nil {
+						result.PreserveBodyForError()
+					}
+					return result, fmt.Errorf("httpclient: retry-after/backoff (%v) excede el plazo global restante: %w", decision.Wait, context.DeadlineExceeded)
+				}
+			}
 			timer := time.NewTimer(decision.Wait)
 			select {
 			case <-ctx.Done():
@@ -889,7 +1009,8 @@ func (s *Session) Do(ctx context.Context, spec Spec) (*Result, error) {
 			}
 		}
 
-		if err := s.applyAction(gen, decision.Action, decision.Class, spec.PreserveCookies); err != nil {
+		// 3. Aplicar acción de rotación de proxy (respetando contexto y preservando cookies restauradas)
+		if err := s.applyActionWithContext(ctx, gen, decision.Action, decision.Class, true); err != nil {
 			s.failureCount.Add(1)
 			if result != nil {
 				result.PreserveBodyForError()
@@ -898,11 +1019,7 @@ func (s *Session) Do(ctx context.Context, spec Spec) (*Result, error) {
 		}
 	}
 
-	s.failureCount.Add(1)
-	if lastResult != nil {
-		lastResult.PreserveBodyForError()
-	}
-	return lastResult, fmt.Errorf("browser: agotados %d intentos: %w", maxAttempts, ErrMaxRetriesExceeded)
+	return lastResult, &MaxRetriesError{Attempts: maxAttempts, LastErr: resultErr(lastResult)}
 }
 
 func resultErr(r *Result) error {
@@ -922,7 +1039,7 @@ func resultErr(r *Result) error {
 // sin tocar s.mu en ningún momento. Esto es lo que hace posible que N
 // goroutines llamen a Do() concurrentemente sobre la misma Session.
 // attemptWith ejecuta UN intento usando un snapshot inmutable de estado.
-func (s *Session) attemptWith(ctx context.Context, st state, spec Spec, attemptNum int) (*Result, retry.Decision) {
+func (s *Session) attemptWith(ctx context.Context, st state, spec Spec, attemptNum int, maxAttempts int) (*Result, retry.Decision) {
 	start := time.Now()
 	proxyStr := proxyURLString(st.currentProxy)
 
@@ -932,9 +1049,10 @@ func (s *Session) attemptWith(ctx context.Context, st state, spec Spec, attemptN
 		resp := &Response{Err: err, Duration: time.Since(start), Request: req, Complete: false}
 		result := &Result{Response: resp, Attempts: attemptNum, ProxyURL: proxyStr, Err: err}
 		dec := s.retryEng.Decide(attemptNum, retry.Signal{
-			NetErr:     err,
-			Method:     spec.Method,
-			Idempotent: spec.Idempotent,
+			NetErr:      err,
+			Method:      spec.Method,
+			Idempotent:  spec.Idempotent,
+			MaxAttempts: maxAttempts,
 		})
 		if spec.NoRetry {
 			dec = retry.Decision{Retry: false, Class: retry.ClassPermanent}
@@ -1078,9 +1196,10 @@ func (s *Session) attemptWith(ctx context.Context, st state, spec Spec, attemptN
 		}
 		result := &Result{Response: resp, Attempts: attemptNum, ProxyURL: proxyStr, Err: err}
 		dec := s.retryEng.Decide(attemptNum, retry.Signal{
-			NetErr:     err,
-			Method:     spec.Method,
-			Idempotent: spec.Idempotent,
+			NetErr:      err,
+			Method:      spec.Method,
+			Idempotent:  spec.Idempotent,
+			MaxAttempts: maxAttempts,
 		})
 		if spec.NoRetry {
 			dec = retry.Decision{Retry: false, Class: retry.ClassPermanent}
@@ -1108,6 +1227,7 @@ func (s *Session) attemptWith(ctx context.Context, st state, spec Spec, attemptN
 		BodySample:    sample,
 		Method:        spec.Method,
 		Idempotent:    spec.Idempotent,
+		MaxAttempts:   maxAttempts,
 		BodyComplete:  resp.Complete,
 		BodyTruncated: resp.Truncated,
 		RetryAfter:    resp.RetryAfter(),
@@ -1214,6 +1334,14 @@ func (s *Session) IsAuthenticated() bool {
 // combo. Mantiene la conexión TCP/TLS viva (connection reuse). Si rotateIdentity
 // es true, asigna un nuevo fingerprint de navegador sin cerrar sockets.
 func (s *Session) ResetComboState(rotateIdentity bool) error {
+	return s.ResetComboStateContext(context.Background(), rotateIdentity)
+}
+
+// ResetComboStateContext vacía el estado de la sesión respetando el contexto provisto.
+func (s *Session) ResetComboStateContext(ctx context.Context, rotateIdentity bool) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	s.preserveCookies.Store(false)
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -1234,7 +1362,7 @@ func (s *Session) ResetComboState(rotateIdentity bool) error {
 		var id Identity
 		var err error
 		if s.opts.profileManager != nil {
-			spec, pErr := s.opts.profileManager.GetProfile(context.Background())
+			spec, pErr := s.opts.profileManager.GetProfile(ctx)
 			if pErr == nil {
 				s.opts.profileSpec = spec
 				id, err = IdentityFromSpec(spec)

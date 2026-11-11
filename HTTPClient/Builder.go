@@ -41,6 +41,7 @@ type Spec struct {
 	Redict   *bool // Alias de compatibilidad para "Redict"
 	NoRetry         bool  // true = deshabilita reintentos automáticos para este request
 	MaxAttempts     int   // Si es > 0, define intentos máximos específicos para esta petición en Session.Do
+	MaxRetries      int   // Si es > 0, define el número de REINTENTOS tras fallo (equivale a MaxAttempts = MaxRetries + 1)
 	PreserveCookies bool  // true = ante caídas de proxy o bloqueos WAF, rota el proxy pero NUNCA borra las cookies del Jar
 }
 
