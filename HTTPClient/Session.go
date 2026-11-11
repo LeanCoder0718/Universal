@@ -790,6 +790,15 @@ func (s *Session) Do(ctx context.Context, spec Spec) (*Result, error) {
 		return nil, err
 	}
 
+	if spec.Multipart != nil {
+		mpBody, mpCT, mpErr := spec.Multipart.Build()
+		if mpErr != nil {
+			return nil, fmt.Errorf("browser: error construyendo multipart: %w", mpErr)
+		}
+		spec.Body = mpBody
+		spec.ContentType = mpCT
+	}
+
 	targetCountry := spec.Country
 	if targetCountry == "" {
 		targetCountry = GeoRoute.CountryFromContext(ctx)

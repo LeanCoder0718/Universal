@@ -34,6 +34,24 @@ type Context struct {
 	Extra map[string]string
 }
 
+// GetHeader busca de forma insensible a mayúsculas/minúsculas un valor en fhttp.Header.
+// Esto es vital porque en HTTP/2 las cabeceras se almacenan en minúsculas (layout wire),
+// mientras que Go CanonicalMIMEHeaderKey busca exclusivamente con formato Título-Case.
+func GetHeader(h fhttp.Header, name string) string {
+	if h == nil {
+		return ""
+	}
+	if v := h.Get(name); v != "" {
+		return v
+	}
+	for k, vv := range h {
+		if strings.EqualFold(k, name) && len(vv) > 0 {
+			return vv[0]
+		}
+	}
+	return ""
+}
+
 // Engine construye fhttp.Header a partir de un Layout + Context.
 // Es el ÚNICO punto de materialización de cabeceras de todo el proyecto.
 type Engine struct{}

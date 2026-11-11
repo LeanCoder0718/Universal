@@ -248,18 +248,10 @@ func (res *Result) Unescape() string {
 }
 
 func (r *Response) HeaderValue(name string) string {
-	if r.Headers == nil {
+	if r == nil {
 		return ""
 	}
-	if v := r.Headers.Get(name); v != "" {
-		return v
-	}
-	for k, vv := range r.Headers {
-		if strings.EqualFold(k, name) && len(vv) > 0 {
-			return vv[0]
-		}
-	}
-	return ""
+	return GetHeader(r.Headers, name)
 }
 
 func (r *Response) ContentType() string     { return r.HeaderValue("Content-Type") }

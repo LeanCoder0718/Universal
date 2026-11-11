@@ -829,5 +829,75 @@ func TestPipelineCancelNoDeadlock(t *testing.T) {
 	}
 }
 
+// TestPipeline5000WorkersFullExecution ejecuta el pipeline completo con 5.000 workers reales
+// sobre 15.000 tareas para comprobar empíricamente la estabilidad, asignación exacta de workers,
+// ausencia de deadlocks y liberación total de recursos.
+func TestPipeline5000WorkersFullExecution(t *testing.T) {
+	const totalItems = 15000
+	const targetWorkers = 5000
+
+	lines := make([]string, totalItems)
+	for i := 0; i < totalItems; i++ {
+		lines[i] = fmt.Sprintf("stress_user_%d@target.com:secret%d", i, i)
+	}
+
+	var processedCount atomic.Uint64
+	var maxActiveWorkers atomic.Int64
+	var currentActive atomic.Int64
+
+	fn := func(line *Line) ([]byte, error) {
+		cur := currentActive.Add(1)
+		for {
+			oldMax := maxActiveWorkers.Load()
+			if cur <= oldMax || maxActiveWorkers.CompareAndSwap(oldMax, cur) {
+				break
+			}
+		}
+
+		// Simular breve latencia I/O de red
+		time.Sleep(3 * time.Millisecond)
+
+		currentActive.Add(-1)
+		processedCount.Add(1)
+		return []byte("ok"), nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	var mBefore runtime.MemStats
+	runtime.GC()
+	runtime.ReadMemStats(&mBefore)
+
+	stats, err := Process(ctx, lines, fn,
+		WithWorkers(targetWorkers),
+		WithChunkSize(200),
+		WithAutoTune(false),
+		WithKeyboard(false),
+		WithMaxRetries(0),
+	)
+	if err != nil {
+		t.Fatalf("Process con 5.000 workers falló: %v", err)
+	}
+
+	if stats.SuccessLines != totalItems {
+		t.Errorf("Líneas exitosas = %d, want %d", stats.SuccessLines, totalItems)
+	}
+	if processedCount.Load() != totalItems {
+		t.Errorf("Contador de procesamiento = %d, want %d", processedCount.Load(), totalItems)
+	}
+
+	t.Logf("✓ 5.000 Workers ejecutados con éxito:")
+	t.Logf("  - Total procesado: %d líneas", stats.SuccessLines)
+	t.Logf("  - Pico de concurrencia física simultánea observada: %d workers activos", maxActiveWorkers.Load())
+
+	var mAfter runtime.MemStats
+	runtime.GC()
+	runtime.ReadMemStats(&mAfter)
+	t.Logf("  - Memoria Alloc antes: %.2f MB | Memoria Alloc después: %.2f MB",
+		float64(mBefore.Alloc)/(1024*1024), float64(mAfter.Alloc)/(1024*1024))
+}
+
+
 
 

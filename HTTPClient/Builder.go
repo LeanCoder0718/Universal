@@ -28,6 +28,7 @@ type Spec struct {
 	Kind         RequestKind
 	Body         []byte
 	ContentType  string
+	Multipart    *MultipartBuilder // Opcional: si se asigna, construye automáticamente Body y ContentType con boundary WebKit
 	Country      string            // Opcional: código de país para geo-enrutamiento dinámico en esta petición ("ES", "PE", "XX", etc.)
 	Extra        map[string]string // headers puntuales (Authorization, etc.)
 	HeaderOrder  []string          // Si se define, fuerza el orden wire exacto de las cabeceras (fhttp.HeaderOrderKey)
@@ -78,6 +79,15 @@ func (b *Builder) Build(spec Spec, cookieHeader string) (*fhttp.Request, error) 
 	u, err := url.Parse(spec.URL)
 	if err != nil {
 		return nil, fmt.Errorf("request: URL inválida %q: %w", spec.URL, err)
+	}
+
+	if spec.Multipart != nil {
+		mpBody, mpCT, mpErr := spec.Multipart.Build()
+		if mpErr != nil {
+			return nil, fmt.Errorf("request: error construyendo multipart: %w", mpErr)
+		}
+		spec.Body = mpBody
+		spec.ContentType = mpCT
 	}
 
 	var bodyReader io.Reader
@@ -187,16 +197,12 @@ func (b *Builder) Build(spec Spec, cookieHeader string) (*fhttp.Request, error) 
 		req.Header[HeaderOrderKey] = customOrder
 	}
 	if spec.ContentType != "" {
-		hasCT := false
 		for k := range req.Header {
-			if strings.EqualFold(k, "Content-Type") {
-				hasCT = true
-				break
+			if k != HeaderOrderKey && strings.EqualFold(k, "Content-Type") {
+				delete(req.Header, k)
 			}
 		}
-		if !hasCT {
-			req.Header.Set("Content-Type", spec.ContentType)
-		}
+		req.Header["Content-Type"] = []string{spec.ContentType}
 	}
 	if cookieHeader != "" {
 		hasCookie := false
@@ -222,6 +228,16 @@ func (b *Builder) BuildJSON(method, rawURL string, body []byte, cookieHeader str
 		Kind:        KindXHR,
 		Body:        body,
 		ContentType: "application/json",
+	}, cookieHeader)
+}
+
+// BuildMultipart construye una petición multipart/form-data con boundary WebKit automático.
+func (b *Builder) BuildMultipart(method, rawURL string, mp *MultipartBuilder, cookieHeader string) (*fhttp.Request, error) {
+	return b.Build(Spec{
+		Method:    method,
+		URL:       rawURL,
+		Kind:      KindXHR,
+		Multipart: mp,
 	}, cookieHeader)
 }
 
