@@ -132,6 +132,9 @@ func TestAcceptance_01_StepASucceeds_StepBFailsOnceThenSucceeds(t *testing.T) {
 	if c := countC.Load(); c != 1 {
 		t.Errorf("Paso C debió ejecutarse 1 vez, pero fue: %d", c)
 	}
+	if retries := pool.GetDetailedMetrics().Retries; retries != 1 {
+		t.Errorf("Métricas del pool debieron reflejar Retries=1 para Session.Do, pero fue: %d", retries)
+	}
 }
 
 // 2. A succeeds, B exhausts maxRetries=3: A=1, B=4, C=0. Returns ErrMaxRetriesExceeded with 4 attempts.
@@ -601,7 +604,7 @@ func TestAcceptance_13_NonIdempotentMethodSafetyPolicy(t *testing.T) {
 		}
 	}
 
-	// B: POST con 503 (Server Overloaded / RateLimit) -> SÍ se reintenta (4 intentos)
+	// B: POST con 503 (Server Overloaded) SIN Idempotent: true -> NO se reintenta (1 intento) según RFC 9110
 	{
 		var count atomic.Int32
 		pool := createAcceptancePool(t, 3, func(req *fhttp.Request) (*fhttp.Response, error) {
@@ -612,12 +615,12 @@ func TestAcceptance_13_NonIdempotentMethodSafetyPolicy(t *testing.T) {
 			return s.Do(ctx, HTTPClient.Spec{Method: "POST", URL: "https://example.com/submit"})
 		})
 		pool.Close()
-		if count.Load() != 4 {
-			t.Errorf("POST con 503 debió reintentarse 4 veces, pero ejecutó: %d", count.Load())
+		if count.Load() != 1 {
+			t.Errorf("POST sin Idempotent:true ante 503 NO debió reintentarse (RFC 9110), pero ejecutó: %d", count.Load())
 		}
 	}
 
-	// C: POST con Idempotent: true ante error recuperable -> SÍ se reintenta
+	// C: POST con Idempotent: true ante error recuperable -> SÍ se reintenta (3 intentos)
 	{
 		var count atomic.Int32
 		pool := createAcceptancePool(t, 2, func(req *fhttp.Request) (*fhttp.Response, error) {
@@ -634,6 +637,42 @@ func TestAcceptance_13_NonIdempotentMethodSafetyPolicy(t *testing.T) {
 		pool.Close()
 		if count.Load() != 3 {
 			t.Errorf("POST con Idempotent:true ante 502 debió intentar 3 veces, pero ejecutó: %d", count.Load())
+		}
+	}
+
+	// D: POST con fallo de red ambiguo (EOF) SIN Idempotent: true -> NO se reintenta (1 intento)
+	{
+		var count atomic.Int32
+		pool := createAcceptancePool(t, 3, func(req *fhttp.Request) (*fhttp.Response, error) {
+			count.Add(1)
+			return nil, io.ErrUnexpectedEOF
+		})
+		_, _ = pool.Run(context.Background(), func(ctx context.Context, s *HTTPClient.Session) (*HTTPClient.Result, error) {
+			return s.Do(ctx, HTTPClient.Spec{Method: "POST", URL: "https://example.com/submit-payment"})
+		})
+		pool.Close()
+		if count.Load() != 1 {
+			t.Errorf("POST sin Idempotent:true ante error de red ambiguo NO debió reintentarse, pero ejecutó: %d", count.Load())
+		}
+	}
+
+	// E: POST con fallo de red ambiguo (EOF) CON Idempotent: true -> SÍ se reintenta (4 intentos con maxRetries=3)
+	{
+		var count atomic.Int32
+		pool := createAcceptancePool(t, 3, func(req *fhttp.Request) (*fhttp.Response, error) {
+			count.Add(1)
+			return nil, io.ErrUnexpectedEOF
+		})
+		_, _ = pool.Run(context.Background(), func(ctx context.Context, s *HTTPClient.Session) (*HTTPClient.Result, error) {
+			return s.Do(ctx, HTTPClient.Spec{
+				Method:     "POST",
+				URL:        "https://example.com/submit-idempotent",
+				Idempotent: true,
+			})
+		})
+		pool.Close()
+		if count.Load() != 4 {
+			t.Errorf("POST con Idempotent:true ante error de red debió reintentar 4 veces, pero ejecutó: %d", count.Load())
 		}
 	}
 }

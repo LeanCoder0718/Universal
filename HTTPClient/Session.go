@@ -76,11 +76,15 @@ type Session struct {
 	requestCount atomic.Uint64
 	successCount atomic.Uint64
 	failureCount atomic.Uint64
+	retryCount   atomic.Uint64
 	resetCount      atomic.Uint64
 	preserveCookies atomic.Bool // true = sesión autenticada con estado, protege cookies ante caídas de proxy o WAF
 }
 
 type Option func(*sessionParams)
+
+// RetryHook define la firma para callbacks informados de cada reintento de petición a nivel de sesión.
+type RetryHook func(attempt int, reason string)
 
 type sessionParams struct {
 	identityOpts    []IdentityOption
@@ -96,7 +100,19 @@ type sessionParams struct {
 	enableSessionID *bool
 	limiter         *PerHost
 	geoPolicy       *GeoRoute.GeoPolicy
+	retryHook       RetryHook
+	ctx             context.Context
 	err             error
+}
+
+// WithRetryHook asocia un callback que se notifica cada vez que la sesión decide reintentar una petición.
+func WithRetryHook(hook RetryHook) Option {
+	return func(p *sessionParams) { p.retryHook = hook }
+}
+
+// WithContext asocia un contexto inicial para la construcción de la sesión (ej. consulta de ProfileManager).
+func WithContext(ctx context.Context) Option {
+	return func(p *sessionParams) { p.ctx = ctx }
 }
 
 // WithRateLimiter asocia un limitador de tasa de peticiones por host a la sesión.
@@ -201,6 +217,12 @@ func WithProfileManager(mgr *Profiles.Manager) Option {
 	return func(p *sessionParams) { p.profileManager = mgr }
 }
 
+// NewSessionWithContext crea una nueva sesión pasando un contexto explícito para operaciones iniciales (perfiles, red).
+func NewSessionWithContext(ctx context.Context, cfg *Config, opts ...Option) (*Session, error) {
+	opts = append([]Option{WithContext(ctx)}, opts...)
+	return NewSession(cfg, opts...)
+}
+
 func NewSession(cfg *Config, opts ...Option) (*Session, error) {
 	if cfg == nil {
 		cfg = Default()
@@ -224,11 +246,16 @@ func NewSession(cfg *Config, opts ...Option) (*Session, error) {
 		params.classifier = retry.NewDefaultClassifier()
 	}
 
+	initCtx := params.ctx
+	if initCtx == nil {
+		initCtx = context.Background()
+	}
+
 	// Resolver la identidad: ProfileManager (dinámico), ProfileSpec (estático) o NewIdentity (legacy)
 	var id Identity
 	var err error
 	if params.profileManager != nil {
-		spec, pErr := params.profileManager.GetProfile(context.Background())
+		spec, pErr := params.profileManager.GetProfile(initCtx)
 		if pErr != nil {
 			return nil, fmt.Errorf("browser: obteniendo perfil desde ProfileManager: %w", pErr)
 		}
@@ -864,7 +891,7 @@ func (s *Session) Do(ctx context.Context, spec Spec) (*Result, error) {
 		targetCountry = GeoRoute.CountryFromContext(ctx)
 	}
 	if targetCountry != "" {
-		if err := s.SetGeoCountry(targetCountry); err != nil {
+		if err := s.SetGeoCountryContext(ctx, targetCountry); err != nil {
 			return nil, fmt.Errorf("browser: adaptando proxy para país %s: %w", targetCountry, err)
 		}
 	}
@@ -983,6 +1010,11 @@ func (s *Session) Do(ctx context.Context, spec Spec) (*Result, error) {
 		}
 
 		// Si vamos a reintentar:
+		s.retryCount.Add(1)
+		if s.opts.retryHook != nil {
+			s.opts.retryHook(attempt, decision.Reason)
+		}
+
 		// 1. Revertir el Jar al estado inicial previo a la petición para no acumular
 		//    cookies contaminadas del intento fallido
 		if s.jar != nil {
@@ -1247,6 +1279,11 @@ func proxyURLString(e *Entry) string {
 
 func (s *Session) Metrics() (total, success, failure, resets uint64) {
 	return s.requestCount.Load(), s.successCount.Load(), s.failureCount.Load(), s.resetCount.Load()
+}
+
+// RetryCount retorna la cantidad total de reintentos individuales ejecutados por esta sesión.
+func (s *Session) RetryCount() uint64 {
+	return s.retryCount.Load()
 }
 
 // Profile retorna una copia del Profile activo en la sesión.

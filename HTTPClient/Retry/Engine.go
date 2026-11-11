@@ -315,22 +315,17 @@ func (e *Engine) Decide(attempt int, s Signal) Decision {
 		return Decision{Class: class, Action: ActionNone, Retry: false, Reason: "max attempts exhausted"}
 	}
 
-	// No reintentar métodos no idempotentes salvo cuando el caller lo autorice (Idempotent: true),
-	// cuando el fallo sea a nivel de transporte/red/proxy/WAF/TLS (la petición no se completó en el servidor),
-	// o cuando el servidor señale sobrecarga/límite de tasa (ClassRateLimited 429, ClassServerOverloaded 503).
-	isTransportOrWAFOrRateLimit := class == ClassBlocked ||
-		class == ClassTransientNetwork ||
-		class == ClassTLSFingerprint ||
-		class == ClassChallenge ||
-		class == ClassRateLimited ||
-		class == ClassServerOverloaded
-
-	if !s.Idempotent && !isIdempotentMethod(s.Method) && !isTransportOrWAFOrRateLimit {
+	// No reintentar métodos no idempotentes (POST, PATCH) salvo cuando el caller lo autorice
+	// explícitamente con Idempotent: true (RFC 9110 Sec 9.2.2).
+	// Los reintentos automáticos de operaciones no idempotentes ante errores de red ambiguos
+	// o respuestas del servidor (503, 429) son intrínsecamente inseguros porque la petición
+	// pudo haberse procesado parcial o totalmente en el backend (ej. doble cobro, registros duplicados).
+	if !s.Idempotent && !isIdempotentMethod(s.Method) {
 		return Decision{
 			Class:  class,
 			Action: ActionNone,
 			Retry:  false,
-			Reason: "non-idempotent method, retry disabled",
+			Reason: "non-idempotent method: retry disabled without explicit Idempotent flag (RFC 9110)",
 		}
 	}
 

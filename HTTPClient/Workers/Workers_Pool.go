@@ -66,6 +66,11 @@ type Pool struct {
 }
 
 // HTTPDetailedMetrics encapsula el estado completo del subsistema HTTP.
+// NOTA TÉCNICA: CreatedClients, ReusedClients y ActiveSessions reflejan el ciclo de vida
+// real gestionado por LifecycleManager. ActiveKeepAlives, ReusedConns, NewConns y ClosedConns
+// son métricas sintéticas agregadas a nivel de sesión y petición (net/http encapsula el socket pool
+// subyacente sin exponer file descriptors TCP directos salvo con instrumentación httptrace).
+// Retries refleja el recuento exacto en tiempo real de todos los reintentos ejecutados (Session.Do + Job).
 type HTTPDetailedMetrics struct {
 	ActiveProtocol   string
 	CreatedClients   uint64
@@ -130,15 +135,20 @@ func New(cfg *HTTPClient.Config, opts PoolOptions, sessionOpts ...HTTPClient.Opt
 	allSessionOpts = append(allSessionOpts, sessionOpts...)
 
 	p := &Pool{
-		cfg:         &cfgCopy,
-		sessionOpts: allSessionOpts,
-		maxRetries:  maxRetries,
+		cfg:        &cfgCopy,
+		maxRetries: maxRetries,
 	}
+
+	// Conectar contador atómico de reintentos del pool con los reintentos individuales de Session.Do
+	allSessionOpts = append(allSessionOpts, HTTPClient.WithRetryHook(func(attempt int, reason string) {
+		p.retries.Add(1)
+	}))
+
 	if cfgCopy.Worker.RateLimitPerHost > 0 {
 		p.limiter = HTTPClient.NewRateLimiter(cfgCopy.Worker.RateLimitPerHost, cfgCopy.Worker.RateLimitBurst)
 		allSessionOpts = append(allSessionOpts, HTTPClient.WithRateLimiter(p.limiter))
-		p.sessionOpts = allSessionOpts
 	}
+	p.sessionOpts = allSessionOpts
 
 	maxInFlight := opts.MaxInFlight
 	if maxInFlight <= 0 {
@@ -354,11 +364,18 @@ func (p *Pool) RunWithRetry(ctx context.Context, maxAttempts int, job Job) (*HTT
 					ExcludedHosts: excludedHosts,
 					AllowFallback: true,
 				})
-				if aErr == nil && node != nil {
-					_ = handle.Session.SetExplicitProxy(node.Entry)
+				if aErr != nil {
+					return nil, fmt.Errorf("workers: error adquiriendo proxy alternativo para reintento: %w", aErr)
+				}
+				if node != nil {
+					if err := handle.Session.SetExplicitProxy(node.Entry); err != nil {
+						return nil, fmt.Errorf("workers: error configurando proxy para reintento: %w", err)
+					}
 				}
 			} else {
-				_ = handle.Session.RotateProxy()
+				if err := handle.Session.RotateProxyContext(ctx); err != nil {
+					return nil, fmt.Errorf("workers: error rotando proxy para reintento: %w", err)
+				}
 			}
 		}
 
@@ -420,7 +437,7 @@ func isRetryableError(err error) bool {
 	if err == nil {
 		return false
 	}
-	if errors.Is(err, context.Canceled) {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, HTTPClient.ErrInvalidConfig) {
 		return false
 	}
 	return true

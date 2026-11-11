@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// TestSession_PostMaxRetriesRespected verifica que una petición POST con MaxRetries = 3
+// TestSession_PostMaxRetriesRespected verifica que una petición POST con Idempotent: true y MaxRetries = 3
 // ante errores 429 (RateLimit) o 503 (ServerOverloaded) ejecute exactamente 4 intentos
 // (1 intento original + 3 reintentos) en lugar de abortar tras el intento 1.
 func TestSession_PostMaxRetriesRespected(t *testing.T) {
@@ -30,12 +30,24 @@ func TestSession_PostMaxRetriesRespected(t *testing.T) {
 		t.Fatalf("NewSession falló: %v", err)
 	}
 
-	// Solicitamos explícitamente 3 reintentos (MaxRetries: 3 -> 4 intentos en total)
+	// 1. Sin Idempotent: true (default RFC 9110) -> NO se reintenta (1 solo intento)
+	callCount.Store(0)
+	_, _ = sess.Do(context.Background(), Spec{
+		Method:     "POST",
+		URL:        "https://api.example.com/login",
+		MaxRetries: 3,
+	})
+	if callCount.Load() != 1 {
+		t.Errorf("POST sin Idempotent:true debió abortar al intento 1 por seguridad RFC 9110, ejecutó: %d", callCount.Load())
+	}
+
+	// 2. Con Idempotent: true -> SÍ ejecuta exactamente 4 intentos (1 original + 3 reintentos)
 	callCount.Store(0)
 	res, _ := sess.Do(context.Background(), Spec{
 		Method:     "POST",
 		URL:        "https://api.example.com/login",
 		MaxRetries: 3,
+		Idempotent: true,
 	})
 
 	if callCount.Load() != 4 {
@@ -46,7 +58,7 @@ func TestSession_PostMaxRetriesRespected(t *testing.T) {
 	}
 }
 
-// TestSession_PostMaxAttemptsRespected verifica que MaxAttempts = 3 ejecute exactamente 3 intentos.
+// TestSession_PostMaxAttemptsRespected verifica que MaxAttempts = 3 con Idempotent: true ejecute exactamente 3 intentos.
 func TestSession_PostMaxAttemptsRespected(t *testing.T) {
 	var callCount atomic.Int32
 	mockFact := &trackingMockFactory{
@@ -65,15 +77,28 @@ func TestSession_PostMaxAttemptsRespected(t *testing.T) {
 		t.Fatalf("NewSession falló: %v", err)
 	}
 
+	// 1. Sin Idempotent: true -> 1 solo intento
+	callCount.Store(0)
+	_, _ = sess.Do(context.Background(), Spec{
+		Method:      "POST",
+		URL:         "https://api.example.com/checkout",
+		MaxAttempts: 3,
+	})
+	if callCount.Load() != 1 {
+		t.Errorf("POST sin Idempotent:true ante 503 debió abortar al intento 1, ejecutó: %d", callCount.Load())
+	}
+
+	// 2. Con Idempotent: true -> 3 intentos
 	callCount.Store(0)
 	res, _ := sess.Do(context.Background(), Spec{
 		Method:      "POST",
 		URL:         "https://api.example.com/checkout",
 		MaxAttempts: 3,
+		Idempotent:  true,
 	})
 
 	if callCount.Load() != 3 {
-		t.Errorf("Se esperaban exactamente 3 intentos con MaxAttempts = 3, pero se ejecutaron: %d", callCount.Load())
+		t.Errorf("Se esperaban exactamente 3 intentos con MaxAttempts = 3 e Idempotent:true, pero se ejecutaron: %d", callCount.Load())
 	}
 	if res == nil || res.StatusCode != http.StatusServiceUnavailable {
 		t.Errorf("Respuesta esperada 503, obtenida: %v", res)
