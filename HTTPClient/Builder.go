@@ -33,7 +33,6 @@ type Spec struct {
 	Extra        map[string]string // headers puntuales (Authorization, etc.)
 	HeaderOrder  []string          // Si se define, fuerza el orden wire exacto de las cabeceras (fhttp.HeaderOrderKey)
 	CookieFilter []string          // Si no está vacío, el Session filtrará el Jar para enviar SOLO estas cookies en este request.
-	Idempotent   bool
 
 	// Opciones personalizables por petición:
 	UseProxy *bool // nil = usa proxy de sesión (si hay), &false = fuerza directo sin proxy, &true = fuerza proxy

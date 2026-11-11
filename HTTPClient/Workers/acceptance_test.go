@@ -331,7 +331,6 @@ func TestAcceptance_05_TokenInClosureWithoutReRunningA(t *testing.T) {
 			Extra: map[string]string{
 				"Authorization": "Bearer " + token,
 			},
-			Idempotent: true,
 		})
 	})
 
@@ -586,94 +585,118 @@ func TestAcceptance_12_ConcurrentTasksDoNotShareState(t *testing.T) {
 	}
 }
 
-// 13. Non-idempotent requests respect existing idempotency safety policy.
-func TestAcceptance_13_NonIdempotentMethodSafetyPolicy(t *testing.T) {
-	// A: POST con error 400 (Client/Permanent) sin Idempotent: true -> NO se reintenta (1 intento)
-	{
-		var count atomic.Int32
-		pool := createAcceptancePool(t, 3, func(req *fhttp.Request) (*fhttp.Response, error) {
-			count.Add(1)
-			return mockStatusResponse(http.StatusBadRequest, "bad request"), nil
+// 13. Reintentos agnósticos de método y códigos de error reintentables vs no reintentables.
+// Toda petición hereda automáticamente el presupuesto del pool sin necesidad de flags de idempotencia.
+func TestAcceptance_13_MethodAgnosticRetryPolicy(t *testing.T) {
+	// A: Verificación por cada código reintentable: 500, 502, 503, 504, 429 y 403 con POST sin flags
+	retryableCodes := []int{500, 502, 503, 504, 429, 403}
+	for _, code := range retryableCodes {
+		t.Run(fmt.Sprintf("Status_%d_RecuperaEnIntento2", code), func(t *testing.T) {
+			var count atomic.Int32
+			pool := createAcceptancePool(t, 2, func(req *fhttp.Request) (*fhttp.Response, error) {
+				att := count.Add(1)
+				if att == 1 {
+					body := "error transitorio"
+					if code == 403 {
+						body = "Access Denied: Cloudflare block"
+					}
+					return mockStatusResponse(code, body), nil
+				}
+				return mockOKResponse("ok"), nil
+			})
+			defer pool.Close()
+
+			res, err := pool.Run(context.Background(), func(ctx context.Context, s *HTTPClient.Session) (*HTTPClient.Result, error) {
+				return s.Do(ctx, HTTPClient.Spec{Method: "POST", URL: "https://example.com/api/action"})
+			})
+			if err != nil {
+				t.Fatalf("Código %d debió recuperarse al intento 2, pero dio error: %v", code, err)
+			}
+			if res == nil || res.StatusCode != 200 {
+				t.Fatalf("Código %d debió retornar 200 tras reintento, obtenido: %v", code, res)
+			}
+			if count.Load() != 2 {
+				t.Fatalf("Código %d debió ejecutar exactamente 2 intentos (1 fallo + 1 éxito), ejecutó: %d", code, count.Load())
+			}
 		})
-		_, _ = pool.Run(context.Background(), func(ctx context.Context, s *HTTPClient.Session) (*HTTPClient.Result, error) {
-			return s.Do(ctx, HTTPClient.Spec{Method: "POST", URL: "https://example.com/submit"})
-		})
-		pool.Close()
-		if count.Load() != 1 {
-			t.Errorf("POST con 400 debió abortar al intento 1, pero ejecutó: %d", count.Load())
-		}
 	}
 
-	// B: POST con 503 (Server Overloaded) SIN Idempotent: true -> NO se reintenta (1 intento) según RFC 9110
-	{
-		var count atomic.Int32
-		pool := createAcceptancePool(t, 3, func(req *fhttp.Request) (*fhttp.Response, error) {
-			count.Add(1)
-			return mockStatusResponse(http.StatusServiceUnavailable, "overloaded"), nil
+	// B: Verificación por cada método HTTP: GET, POST, PATCH, PUT, DELETE
+	methods := []string{"GET", "POST", "PATCH", "PUT", "DELETE"}
+	for _, m := range methods {
+		t.Run(fmt.Sprintf("Method_%s_ReintentaAutomaticamente", m), func(t *testing.T) {
+			var count atomic.Int32
+			pool := createAcceptancePool(t, 2, func(req *fhttp.Request) (*fhttp.Response, error) {
+				att := count.Add(1)
+				if att == 1 {
+					return mockStatusResponse(http.StatusBadGateway, "gateway down"), nil
+				}
+				return mockOKResponse("success"), nil
+			})
+			defer pool.Close()
+
+			res, err := pool.Run(context.Background(), func(ctx context.Context, s *HTTPClient.Session) (*HTTPClient.Result, error) {
+				return s.Do(ctx, HTTPClient.Spec{Method: m, URL: "https://example.com/resource"})
+			})
+			if err != nil {
+				t.Fatalf("Método %s debió reintentar automáticamente ante 502, error: %v", m, err)
+			}
+			if res == nil || res.StatusCode != 200 {
+				t.Fatalf("Método %s debió completar con 200, obtenido: %v", m, res)
+			}
+			if count.Load() != 2 {
+				t.Fatalf("Método %s debió ejecutar exactamente 2 intentos, ejecutó: %d", m, count.Load())
+			}
 		})
-		_, _ = pool.Run(context.Background(), func(ctx context.Context, s *HTTPClient.Session) (*HTTPClient.Result, error) {
-			return s.Do(ctx, HTTPClient.Spec{Method: "POST", URL: "https://example.com/submit"})
-		})
-		pool.Close()
-		if count.Load() != 1 {
-			t.Errorf("POST sin Idempotent:true ante 503 NO debió reintentarse (RFC 9110), pero ejecutó: %d", count.Load())
-		}
 	}
 
-	// C: POST con Idempotent: true ante error recuperable -> SÍ se reintenta (3 intentos)
-	{
+	// C: Fallos transitorios de transporte (EOF, Connection Reset) con POST se reintentan automáticamente
+	t.Run("Transport_EOF_ReintentaAutomaticamente", func(t *testing.T) {
 		var count atomic.Int32
 		pool := createAcceptancePool(t, 2, func(req *fhttp.Request) (*fhttp.Response, error) {
-			count.Add(1)
-			return mockStatusResponse(http.StatusBadGateway, "bad gateway"), nil
+			att := count.Add(1)
+			if att == 1 {
+				return nil, io.ErrUnexpectedEOF
+			}
+			return mockOKResponse("recuperado"), nil
 		})
-		_, _ = pool.Run(context.Background(), func(ctx context.Context, s *HTTPClient.Session) (*HTTPClient.Result, error) {
-			return s.Do(ctx, HTTPClient.Spec{
-				Method:     "POST",
-				URL:        "https://example.com/payment",
-				Idempotent: true,
-			})
-		})
-		pool.Close()
-		if count.Load() != 3 {
-			t.Errorf("POST con Idempotent:true ante 502 debió intentar 3 veces, pero ejecutó: %d", count.Load())
-		}
-	}
+		defer pool.Close()
 
-	// D: POST con fallo de red ambiguo (EOF) SIN Idempotent: true -> NO se reintenta (1 intento)
-	{
-		var count atomic.Int32
-		pool := createAcceptancePool(t, 3, func(req *fhttp.Request) (*fhttp.Response, error) {
-			count.Add(1)
-			return nil, io.ErrUnexpectedEOF
+		res, err := pool.Run(context.Background(), func(ctx context.Context, s *HTTPClient.Session) (*HTTPClient.Result, error) {
+			return s.Do(ctx, HTTPClient.Spec{Method: "POST", URL: "https://example.com/upload"})
 		})
-		_, _ = pool.Run(context.Background(), func(ctx context.Context, s *HTTPClient.Session) (*HTTPClient.Result, error) {
-			return s.Do(ctx, HTTPClient.Spec{Method: "POST", URL: "https://example.com/submit-payment"})
-		})
-		pool.Close()
-		if count.Load() != 1 {
-			t.Errorf("POST sin Idempotent:true ante error de red ambiguo NO debió reintentarse, pero ejecutó: %d", count.Load())
+		if err != nil {
+			t.Fatalf("POST debió recuperarse de unexpected EOF al intento 2, error: %v", err)
 		}
-	}
+		if res == nil || res.StatusCode != 200 {
+			t.Fatalf("POST debió retornar 200, obtenido: %v", res)
+		}
+		if count.Load() != 2 {
+			t.Fatalf("Se esperaban 2 intentos ante EOF, ejecutó: %d", count.Load())
+		}
+	})
 
-	// E: POST con fallo de red ambiguo (EOF) CON Idempotent: true -> SÍ se reintenta (4 intentos con maxRetries=3)
-	{
-		var count atomic.Int32
-		pool := createAcceptancePool(t, 3, func(req *fhttp.Request) (*fhttp.Response, error) {
-			count.Add(1)
-			return nil, io.ErrUnexpectedEOF
-		})
-		_, _ = pool.Run(context.Background(), func(ctx context.Context, s *HTTPClient.Session) (*HTTPClient.Result, error) {
-			return s.Do(ctx, HTTPClient.Spec{
-				Method:     "POST",
-				URL:        "https://example.com/submit-idempotent",
-				Idempotent: true,
+	// D: Códigos de error permanente (400, 401, 404, 405, 422) NO se reintentan (exactamente 1 intento)
+	nonRetryableCodes := []int{400, 401, 404, 405, 422}
+	for _, code := range nonRetryableCodes {
+		t.Run(fmt.Sprintf("PermanentCode_%d_NoReintenta", code), func(t *testing.T) {
+			var count atomic.Int32
+			pool := createAcceptancePool(t, 3, func(req *fhttp.Request) (*fhttp.Response, error) {
+				count.Add(1)
+				return mockStatusResponse(code, "permanent error"), nil
 			})
+			defer pool.Close()
+
+			res, _ := pool.Run(context.Background(), func(ctx context.Context, s *HTTPClient.Session) (*HTTPClient.Result, error) {
+				return s.Do(ctx, HTTPClient.Spec{Method: "POST", URL: "https://example.com/client-error"})
+			})
+			if count.Load() != 1 {
+				t.Fatalf("Código permanente %d debió abortar al intento 1, pero ejecutó: %d", code, count.Load())
+			}
+			if res == nil || res.StatusCode != code {
+				t.Fatalf("Respuesta esperada status %d, obtenida: %v", code, res)
+			}
 		})
-		pool.Close()
-		if count.Load() != 4 {
-			t.Errorf("POST con Idempotent:true ante error de red debió reintentar 4 veces, pero ejecutó: %d", count.Load())
-		}
 	}
 }
 

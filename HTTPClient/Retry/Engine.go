@@ -53,8 +53,7 @@ type Signal struct {
 	Headers       map[string][]string // Cabeceras de respuesta para detección de WAF y mitigación
 	BodySample    []byte
 	Method        string
-	Idempotent    bool // true = el caller autoriza retry aunque no sea GET/HEAD/...
-	MaxAttempts   int  // Intentos máximos autorizados para esta petición específica (override por request)
+	MaxAttempts   int // Intentos máximos autorizados para esta petición específica (override por request)
 	BodyComplete  bool
 	BodyTruncated bool
 	RetryAfter    time.Duration
@@ -237,19 +236,17 @@ func (d *DefaultClassifier) Classify(s Signal) ErrorClass {
 	case s.StatusCode == 451:
 		return ClassBlocked
 	case s.StatusCode == 403:
-		if len(s.BodySample) == 0 || containsAny(s.BodySample, d.WAFKeywords) {
-			return ClassBlocked
-		}
-		// Si es una respuesta HTML a una petición API/XHR suele ser bloqueo de WAF/proxy
-		if containsAny(s.BodySample, []string{"<html", "<!doctype html"}) {
+		if len(s.BodySample) == 0 || containsAny(s.BodySample, d.WAFKeywords) || containsAny(s.BodySample, []string{"<html", "<!doctype html"}) {
 			return ClassBlocked
 		}
 		return ClassBusinessLogic
+	case s.StatusCode == 500, s.StatusCode == 502, s.StatusCode == 504:
+		return ClassTransientNetwork
 	case containsAny(s.BodySample, []string{"COUNTRY_BLOCKED", "country blocked"}):
 		return ClassBlocked
 	case d.NetworkStatusSet[s.StatusCode]:
 		return ClassTransientNetwork
-	case s.StatusCode == 401, s.StatusCode == 400, s.StatusCode == 404:
+	case s.StatusCode == 400, s.StatusCode == 401, s.StatusCode == 404, s.StatusCode == 405, s.StatusCode == 422:
 		return ClassPermanent
 	default:
 		if s.StatusCode == 0 {
@@ -315,20 +312,6 @@ func (e *Engine) Decide(attempt int, s Signal) Decision {
 		return Decision{Class: class, Action: ActionNone, Retry: false, Reason: "max attempts exhausted"}
 	}
 
-	// No reintentar métodos no idempotentes (POST, PATCH) salvo cuando el caller lo autorice
-	// explícitamente con Idempotent: true (RFC 9110 Sec 9.2.2).
-	// Los reintentos automáticos de operaciones no idempotentes ante errores de red ambiguos
-	// o respuestas del servidor (503, 429) son intrínsecamente inseguros porque la petición
-	// pudo haberse procesado parcial o totalmente en el backend (ej. doble cobro, registros duplicados).
-	if !s.Idempotent && !isIdempotentMethod(s.Method) {
-		return Decision{
-			Class:  class,
-			Action: ActionNone,
-			Retry:  false,
-			Reason: "non-idempotent method: retry disabled without explicit Idempotent flag (RFC 9110)",
-		}
-	}
-
 	action := actionFor(class)
 
 	// Escalamiento adaptativo de bloqueo: si en el intento 1 rotamos de proxy pero el bloqueo/challenge
@@ -354,15 +337,6 @@ func (e *Engine) Decide(attempt int, s Signal) Decision {
 	}
 
 	return Decision{Class: class, Action: action, Retry: true, Wait: wait, Reason: reasonFor(class)}
-}
-
-func isIdempotentMethod(m string) bool {
-	switch strings.ToUpper(m) {
-	case "GET", "HEAD", "OPTIONS", "PUT", "DELETE", "TRACE":
-		return true
-	default:
-		return false
-	}
 }
 
 func actionFor(class ErrorClass) Action {

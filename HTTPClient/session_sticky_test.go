@@ -315,7 +315,7 @@ func TestSession_StickyID_RetriesPreserveID(t *testing.T) {
 	defer sess.Close()
 
 	ctx := context.Background()
-	res, err := sess.Do(ctx, Spec{Method: "GET", URL: ts.URL + "/retry", Kind: KindDocument, Idempotent: true})
+	res, err := sess.Do(ctx, Spec{Method: "GET", URL: ts.URL + "/retry", Kind: KindDocument})
 	if err != nil {
 		t.Fatalf("Do falló en reintento: %v", err)
 	}

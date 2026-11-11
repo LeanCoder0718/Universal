@@ -1083,7 +1083,6 @@ func (s *Session) attemptWith(ctx context.Context, st state, spec Spec, attemptN
 		dec := s.retryEng.Decide(attemptNum, retry.Signal{
 			NetErr:      err,
 			Method:      spec.Method,
-			Idempotent:  spec.Idempotent,
 			MaxAttempts: maxAttempts,
 		})
 		if spec.NoRetry {
@@ -1230,7 +1229,6 @@ func (s *Session) attemptWith(ctx context.Context, st state, spec Spec, attemptN
 		dec := s.retryEng.Decide(attemptNum, retry.Signal{
 			NetErr:      err,
 			Method:      spec.Method,
-			Idempotent:  spec.Idempotent,
 			MaxAttempts: maxAttempts,
 		})
 		if spec.NoRetry {
@@ -1258,7 +1256,6 @@ func (s *Session) attemptWith(ctx context.Context, st state, spec Spec, attemptN
 		Headers:       resp.Headers,
 		BodySample:    sample,
 		Method:        spec.Method,
-		Idempotent:    spec.Idempotent,
 		MaxAttempts:   maxAttempts,
 		BodyComplete:  resp.Complete,
 		BodyTruncated: resp.Truncated,
