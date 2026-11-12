@@ -40,6 +40,7 @@ type Response struct {
 	Request       *fhttp.Request
 	Duration      time.Duration
 	Err           error
+	FinalURL      string // URL final tras seguir redirecciones (ej. example.com/pe/login)
 
 	compressed   bool
 	originalSize int64
@@ -400,14 +401,19 @@ func (r *Response) JSONPretty() (string, error) {
 }
 
 func (r *Response) GetURLRedirect() string {
-	if r.Headers != nil {
-		loc := r.Headers.Get("Location")
-		if loc == "" {
-			loc = r.Headers.Get("location")
-		}
-		if loc != "" {
-			if strings.HasPrefix(loc, "/") {
-				if r.Request != nil && r.Request.URL != nil {
+	if r.FinalURL != "" {
+		return r.FinalURL
+	}
+	if r.Request != nil && r.Request.URL != nil {
+		reqURL := r.Request.URL.String()
+		// Si se detuvo en un 3xx (redirección no seguida por configuración), extraemos la cabecera Location
+		if r.StatusCode >= 300 && r.StatusCode < 400 && r.Headers != nil {
+			loc := r.Headers.Get("Location")
+			if loc == "" {
+				loc = r.Headers.Get("location")
+			}
+			if loc != "" {
+				if strings.HasPrefix(loc, "/") {
 					scheme := r.Request.URL.Scheme
 					if scheme == "" {
 						scheme = "https"
@@ -416,13 +422,29 @@ func (r *Response) GetURLRedirect() string {
 				}
 				return loc
 			}
+		}
+		return reqURL
+	}
+	if r.Headers != nil {
+		loc := r.Headers.Get("Location")
+		if loc == "" {
+			loc = r.Headers.Get("location")
+		}
+		if loc != "" {
 			return loc
 		}
 	}
-	if r.Request != nil && r.Request.URL != nil {
-		return r.Request.URL.String()
-	}
 	return ""
+}
+
+// GetURLRedict es un alias de compatibilidad para GetURLRedirect.
+func (r *Response) GetURLRedict() string {
+	return r.GetURLRedirect()
+}
+
+// GetUrlRedict es un alias de compatibilidad para GetURLRedirect.
+func (r *Response) GetUrlRedict() string {
+	return r.GetURLRedirect()
 }
 
 func (r *Response) GetHeaderValue(name string) string {
@@ -738,6 +760,9 @@ func FromRaw(raw *fhttp.Response, req *fhttp.Request, start time.Time, maxBody i
 		Request:       req,
 		Duration:      time.Since(start),
 		ContentLength: raw.ContentLength,
+	}
+	if raw.Request != nil && raw.Request.URL != nil {
+		resp.FinalURL = raw.Request.URL.String()
 	}
 
 	buf := GetBuffer()

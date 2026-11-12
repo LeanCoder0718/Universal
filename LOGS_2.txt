@@ -1,0 +1,545 @@
+ → How many MaxRetry? [Type 3 for default]:
+ → Change Email? [1: Yes / 2: No (default)]:
+ [*] Analizando dominios únicos de la lista...
+01:21:31.263 INF DomainClassifier: Classified 1 domains → Known: 1 | NotFound: 0 | Pending: 0 (in 0s)
+ [+] Dominios únicos: 1 | En Caché: 1 | No Disponibles: 0 | Pendientes: 0
+01:21:31.266 DBG [MAIL][OP:5B38CB] ==== INICIANDO VERIFICACIÓN DE CORREO ====
+01:21:31.266 DBG [MAIL][OP:5B38CB] Email: h***@t-online.de | Dominio: t-online.de | Solicitado: imap
+01:21:31.266 DBG [MAIL][OP:5B38CB] Servidor detectado: secureimap.t-online.de:993 | Protocolo: imap | TLSMode: SSL
+01:21:31.266 DBG [MAIL][OP:5B38CB] Connection mode: DIRECT | Target: secureimap.t-online.de:993
+01:21:31.317 DBG [NET][OP:5B38CB][DNS] OK in 51ms - Host: secureimap.t-online.de IP: 194.25.134.115
+01:21:31.505 DBG [NET][OP:5B38CB][TCP] OK in 189ms - Target: 194.25.134.115:993
+01:21:32.101 DBG [NET][OP:5B38CB][TLS Handshake (Implicit)] OK in 595ms - Host: secureimap.t-online.de
+01:21:32.101 DBG [IMAP][OP:5B38CB][GREETING] Server greeting accepted: * OK [CAPABILITY IMAP4 IMAP4rev1 QUOTA LITERAL+ NAMESPACE UIDPLUS IDLE SORT] IMAP Proxy ready (secureimap.t-online.de)
+01:21:32.101 DBG [IMAP][OP:5B38CB][LOGIN] Authenticating user: h***@t-online.de (Password: ********)
+01:21:32.298 DBG [IMAP][OP:5B38CB][LOGIN] Authentication SUCCESS in 197ms
+01:21:32.298 DBG [IMAP][OP:5B38CB][SELECT] Selecting mailbox: INBOX
+01:21:32.484 DBG [IMAP][OP:5B38CB][SELECT] Selected INBOX successfully
+01:21:32.484 DBG [MAIL][OP:5B38CB] Autenticación EXITOSA en 1.218s
+[2026-11-12 01:21:32] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 01:21:32] PROXY → gw.dataimpulse.com:823 [ERROR: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="144", "Chromium";v="144"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+
+[Cookies Recivied]
+
+[Body]
+Error: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER
+
+────────────────────────────────────────────────────────────────
+
+[2026-11-12 01:21:33] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 01:21:33] PROXY → gw.dataimpulse.com:823 [ERROR: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="144", "Chromium";v="144"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+
+[Cookies Recivied]
+
+[Body]
+Error: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER
+
+────────────────────────────────────────────────────────────────
+
+[2026-11-12 01:21:34] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 01:21:34] PROXY → gw.dataimpulse.com:823 [ERROR: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="144", "Chromium";v="144"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+
+[Cookies Recivied]
+
+[Body]
+Error: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER
+
+────────────────────────────────────────────────────────────────
+
+[2026-11-12 01:21:34] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 01:21:34] PROXY → gw.dataimpulse.com:823 [ERROR: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="144", "Chromium";v="144"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+
+[Cookies Recivied]
+
+[Body]
+Error: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER
+
+────────────────────────────────────────────────────────────────
+
+01:21:34.969 DBG [IMAP][OP:5B38CB][LOGOUT] Logging out and closing session...
+01:21:35.153 DBG [IMAP][OP:5B38CB][CLOSE] Closing connection socket
+01:21:35.158 DBG [MAIL][OP:2AA043] ==== INICIANDO VERIFICACIÓN DE CORREO ====
+01:21:35.158 DBG [MAIL][OP:2AA043] Email: h***@t-online.de | Dominio: t-online.de | Solicitado: imap
+01:21:35.158 DBG [MAIL][OP:2AA043] Servidor detectado: secureimap.t-online.de:993 | Protocolo: imap | TLSMode: SSL
+01:21:35.158 DBG [MAIL][OP:2AA043] Connection mode: DIRECT | Target: secureimap.t-online.de:993
+01:21:35.197 DBG [NET][OP:2AA043][DNS] OK in 27ms - Host: secureimap.t-online.de IP: 194.25.134.51
+01:21:35.384 DBG [NET][OP:2AA043][TCP] OK in 188ms - Target: 194.25.134.51:993
+01:21:36.080 DBG [NET][OP:2AA043][TLS Handshake (Implicit)] OK in 696ms - Host: secureimap.t-online.de
+01:21:37.304 DBG [IMAP][OP:2AA043][GREETING] Server greeting accepted: * OK [CAPABILITY IMAP4 IMAP4rev1 QUOTA LITERAL+ NAMESPACE UIDPLUS IDLE SORT] IMAP Proxy ready (secureimap.t-online.de)
+01:21:37.304 DBG [IMAP][OP:2AA043][LOGIN] Authenticating user: h***@t-online.de (Password: ********)
+01:21:37.503 DBG [IMAP][OP:2AA043][LOGIN] Authentication SUCCESS in 198ms
+01:21:37.503 DBG [IMAP][OP:2AA043][SELECT] Selecting mailbox: INBOX
+01:21:37.696 DBG [IMAP][OP:2AA043][SELECT] Selected INBOX successfully
+01:21:37.696 DBG [MAIL][OP:2AA043] Autenticación EXITOSA en 2.538s
+[2026-11-12 01:21:38] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 01:21:38] PROXY → gw.dataimpulse.com:823 [ERROR: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="131", "Chromium";v="131"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+
+[Cookies Recivied]
+
+[Body]
+Error: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER
+
+────────────────────────────────────────────────────────────────
+
+[2026-11-12 01:21:38] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 01:21:38] PROXY → gw.dataimpulse.com:823 [ERROR: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="131", "Chromium";v="131"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+
+[Cookies Recivied]
+
+[Body]
+Error: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER
+
+────────────────────────────────────────────────────────────────
+
+[2026-11-12 01:21:39] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 01:21:39] PROXY → gw.dataimpulse.com:823 [ERROR: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="131", "Chromium";v="131"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+
+[Cookies Recivied]
+
+[Body]
+Error: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER
+
+────────────────────────────────────────────────────────────────
+
+[2026-11-12 01:21:39] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 01:21:39] PROXY → gw.dataimpulse.com:823 [ERROR: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="131", "Chromium";v="131"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+
+[Cookies Recivied]
+
+[Body]
+Error: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER
+
+────────────────────────────────────────────────────────────────
+
+01:21:39.997 DBG [IMAP][OP:2AA043][LOGOUT] Logging out and closing session...
+01:21:40.186 DBG [IMAP][OP:2AA043][CLOSE] Closing connection socket
+01:21:40.191 DBG [MAIL][OP:49F08C] ==== INICIANDO VERIFICACIÓN DE CORREO ====
+01:21:40.191 DBG [MAIL][OP:49F08C] Email: h***@t-online.de | Dominio: t-online.de | Solicitado: imap
+01:21:40.191 DBG [MAIL][OP:49F08C] Servidor detectado: secureimap.t-online.de:993 | Protocolo: imap | TLSMode: SSL
+01:21:40.191 DBG [MAIL][OP:49F08C] Connection mode: DIRECT | Target: secureimap.t-online.de:993
+01:21:40.222 DBG [NET][OP:49F08C][DNS] OK in 30ms - Host: secureimap.t-online.de IP: 194.25.134.50
+01:21:40.414 DBG [NET][OP:49F08C][TCP] OK in 186ms - Target: 194.25.134.50:993
+01:21:41.012 DBG [NET][OP:49F08C][TLS Handshake (Implicit)] OK in 598ms - Host: secureimap.t-online.de
+01:21:41.012 DBG [IMAP][OP:49F08C][GREETING] Server greeting accepted: * OK [CAPABILITY IMAP4 IMAP4rev1 QUOTA LITERAL+ NAMESPACE UIDPLUS IDLE SORT] IMAP Proxy ready (secureimap.t-online.de)
+01:21:41.014 DBG [IMAP][OP:49F08C][LOGIN] Authenticating user: h***@t-online.de (Password: ********)
+01:21:41.209 DBG [IMAP][OP:49F08C][LOGIN] Authentication SUCCESS in 196ms
+01:21:41.209 DBG [IMAP][OP:49F08C][SELECT] Selecting mailbox: INBOX
+01:21:41.399 DBG [IMAP][OP:49F08C][SELECT] Selected INBOX successfully
+01:21:41.399 DBG [MAIL][OP:49F08C] Autenticación EXITOSA en 1.208s
+[2026-11-12 01:21:41] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 01:21:41] PROXY → gw.dataimpulse.com:823 [ERROR: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="152", "Chromium";v="152"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+
+[Cookies Recivied]
+
+[Body]
+Error: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER
+
+────────────────────────────────────────────────────────────────
+
+[2026-11-12 01:21:42] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 01:21:42] PROXY → gw.dataimpulse.com:823 [ERROR: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="152", "Chromium";v="152"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+
+[Cookies Recivied]
+
+[Body]
+Error: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER
+
+────────────────────────────────────────────────────────────────
+
+[2026-11-12 01:21:42] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 01:21:42] PROXY → gw.dataimpulse.com:823 [ERROR: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="152", "Chromium";v="152"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+
+[Cookies Recivied]
+
+[Body]
+Error: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER
+
+────────────────────────────────────────────────────────────────
+
+[2026-11-12 01:21:43] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 01:21:43] PROXY → gw.dataimpulse.com:823 [ERROR: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="152", "Chromium";v="152"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+
+[Cookies Recivied]
+
+[Body]
+Error: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER
+
+────────────────────────────────────────────────────────────────
+
+01:21:43.647 DBG [IMAP][OP:49F08C][LOGOUT] Logging out and closing session...
+01:21:43.834 DBG [IMAP][OP:49F08C][CLOSE] Closing connection socket
+01:21:43.839 DBG [MAIL][OP:E84D87] ==== INICIANDO VERIFICACIÓN DE CORREO ====
+01:21:43.839 DBG [MAIL][OP:E84D87] Email: h***@t-online.de | Dominio: t-online.de | Solicitado: imap
+01:21:43.839 DBG [MAIL][OP:E84D87] Servidor detectado: secureimap.t-online.de:993 | Protocolo: imap | TLSMode: SSL
+01:21:43.839 DBG [MAIL][OP:E84D87] Connection mode: DIRECT | Target: secureimap.t-online.de:993
+01:21:43.865 DBG [NET][OP:E84D87][DNS] OK in 25ms - Host: secureimap.t-online.de IP: 194.25.134.114
+01:21:44.066 DBG [NET][OP:E84D87][TCP] OK in 186ms - Target: 194.25.134.114:993
+01:21:44.659 DBG [NET][OP:E84D87][TLS Handshake (Implicit)] OK in 593ms - Host: secureimap.t-online.de
+01:21:44.659 DBG [IMAP][OP:E84D87][GREETING] Server greeting accepted: * OK [CAPABILITY IMAP4 IMAP4rev1 QUOTA LITERAL+ NAMESPACE UIDPLUS IDLE SORT] IMAP Proxy ready (secureimap.t-online.de)
+01:21:44.661 DBG [IMAP][OP:E84D87][LOGIN] Authenticating user: h***@t-online.de (Password: ********)
+01:21:44.854 DBG [IMAP][OP:E84D87][LOGIN] Authentication SUCCESS in 194ms
+01:21:44.855 DBG [IMAP][OP:E84D87][SELECT] Selecting mailbox: INBOX
+01:21:45.043 DBG [IMAP][OP:E84D87][SELECT] Selected INBOX successfully
+01:21:45.043 DBG [MAIL][OP:E84D87] Autenticación EXITOSA en 1.204s
+[2026-11-12 01:21:45] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 01:21:45] PROXY → gw.dataimpulse.com:823 [ERROR: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="152", "Chromium";v="152"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+
+[Cookies Recivied]
+
+[Body]
+Error: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER
+
+────────────────────────────────────────────────────────────────
+
+[2026-11-12 01:21:45] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 01:21:45] PROXY → gw.dataimpulse.com:823 [ERROR: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="152", "Chromium";v="152"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+
+[Cookies Recivied]
+
+[Body]
+Error: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER
+
+────────────────────────────────────────────────────────────────
+
+[2026-11-12 01:21:46] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 01:21:46] PROXY → gw.dataimpulse.com:823 [ERROR: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="152", "Chromium";v="152"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+
+[Cookies Recivied]
+
+[Body]
+Error: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER
+
+────────────────────────────────────────────────────────────────
+
+[2026-11-12 01:21:47] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 01:21:47] PROXY → gw.dataimpulse.com:823 [ERROR: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="152", "Chromium";v="152"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+
+[Cookies Recivied]
+
+[Body]
+Error: Get "https://www.paramountplus.com/account/signin/": Proxy responded with non 200 code: 407 NO_USER
+
+────────────────────────────────────────────────────────────────
+
+01:21:47.254 DBG [IMAP][OP:E84D87][LOGOUT] Logging out and closing session...
+01:21:47.439 DBG [IMAP][OP:E84D87][CLOSE] Closing connection socket

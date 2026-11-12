@@ -72,6 +72,14 @@ func (c *testLoopbackClient) Do(req *fhttp.Request) (*fhttp.Response, error) {
 	for k, vv := range stdResp.Header {
 		fResp.Header[k] = vv
 	}
+	if stdResp.Request != nil && stdResp.Request.URL != nil {
+		fReq, _ := fhttp.NewRequest(stdResp.Request.Method, stdResp.Request.URL.String(), nil)
+		fReq.Header = make(fhttp.Header)
+		for k, vv := range stdResp.Request.Header {
+			fReq.Header[k] = vv
+		}
+		fResp.Request = fReq
+	}
 	return fResp, nil
 }
 

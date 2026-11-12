@@ -1271,6 +1271,11 @@ func proxyURLString(e *Entry) string {
 	if e == nil {
 		return ""
 	}
+	if e.User != "" && e.Pass != "" {
+		return e.Host + ":" + e.Port + ":" + e.User + ":" + e.Pass
+	} else if e.User != "" {
+		return e.Host + ":" + e.Port + ":" + e.User
+	}
 	return e.Host + ":" + e.Port
 }
 
@@ -1496,11 +1501,7 @@ func (s *Session) debugLog(spec Spec, result *Result) {
 	if result != nil && result.ProxyURL != "" {
 		proxyDisplay = result.ProxyURL
 	} else if s.currentProxy != nil {
-		proxyType := TypeHTTP
-		if s.proxyPool != nil {
-			proxyType = s.proxyPool.Type()
-		}
-		proxyDisplay = s.currentProxy.RedactedString(proxyType)
+		proxyDisplay = proxyURLString(s.currentProxy)
 	}
 
 	fmt.Printf("[%s] PROXY → %s ", dateStr, proxyDisplay)

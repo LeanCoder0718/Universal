@@ -1,0 +1,604 @@
+→ How many MaxRetry? [Type 3 for default]:
+ → Change Email? [1: Yes / 2: No (default)]: 1
+  → Desea usar un dominio con caracteres ramdon? (Y/N): y
+
+   Si tu dominio es GMAIL existirá 2 formas
+   Primera forma: el resultado será así: example@gmail.com = e.x.ample@gmail.com o exa.mp.le@gmail.com - ETC
+   Segunda forma: el resultado será así: example@gmail.com = example+12345@gmail.com o example+789456@gmail.com - ETC
+   En caso que sea diferente, el resultado será así: example@me.es = exa+12345mple@me.es o e+789456xample@me.es
+   SI NO ESTÁS DE ACUERDO CON ESTA CONFIGURACIÓN, PORFAVOR DIGITE MANUALMENTE EN MyDomains.txt
+
+  → Ingrese el dominio: maverickculonynegro2025@yopmail.net
+ [*] Analizando dominios únicos de la lista...
+00:39:04.239 INF DomainClassifier: Classified 1 domains → Known: 1 | NotFound: 0 | Pending: 0 (in 0s)
+ [+] Dominios únicos: 1 | En Caché: 1 | No Disponibles: 0 | Pendientes: 0
+00:39:04.242 DBG [MAIL][OP:BBE85C] ==== INICIANDO VERIFICACIÓN DE CORREO ====
+00:39:04.242 DBG [MAIL][OP:BBE85C] Email: h***@t-online.de | Dominio: t-online.de | Solicitado: imap
+00:39:04.242 DBG [MAIL][OP:BBE85C] Servidor detectado: secureimap.t-online.de:993 | Protocolo: imap | TLSMode: SSL
+00:39:04.242 DBG [MAIL][OP:BBE85C] Connection mode: DIRECT | Target: secureimap.t-online.de:993
+00:39:04.293 DBG [NET][OP:BBE85C][DNS] OK in 49ms - Host: secureimap.t-online.de IP: 194.25.134.51
+00:39:04.484 DBG [NET][OP:BBE85C][TCP] OK in 191ms - Target: 194.25.134.51:993
+00:39:05.086 DBG [NET][OP:BBE85C][TLS Handshake (Implicit)] OK in 602ms - Host: secureimap.t-online.de
+00:39:05.086 DBG [IMAP][OP:BBE85C][GREETING] Server greeting accepted: * OK [CAPABILITY IMAP4 IMAP4rev1 QUOTA LITERAL+ NAMESPACE UIDPLUS IDLE SORT] IMAP Proxy ready (secureimap.t-online.de)
+00:39:05.088 DBG [IMAP][OP:BBE85C][LOGIN] Authenticating user: h***@t-online.de (Password: ********)
+00:39:05.293 DBG [IMAP][OP:BBE85C][LOGIN] Authentication SUCCESS in 205ms
+00:39:05.293 DBG [IMAP][OP:BBE85C][SELECT] Selecting mailbox: INBOX
+00:39:05.483 DBG [IMAP][OP:BBE85C][SELECT] Selected INBOX successfully
+00:39:05.483 DBG [MAIL][OP:BBE85C] Autenticación EXITOSA en 1.241s
+[2026-11-12 00:39:08] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 00:39:08] PROXY → gw.dataimpulse.com:823 [403]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="131", "Chromium";v="131"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+Accept-Ranges: bytes
+Content-Length: 425
+Content-Type: text/html; charset=utf-8
+Date: Thu, 12 Nov 2026 05:39:07 GMT
+Retry-After: 0
+Server: Varnish
+Via: 1.1 varnish
+X-Backend: west|cache-bur-kbur8200138|1
+X-Cdn-Cache: MISS
+X-Cdn-Cache-Hits: 0
+X-Cdn-Served-By: cache-bur-kbur8200138-BUR
+X-Cdn-Timer: S1794461948.572229,VS0,VE134
+
+[Cookies Recivied]
+WcoSMza=efd7c2c701b840cbb8a8056bed9f26b5.61f15efded5529f5c3eadf2214a11c1edb318bf9a3d90945b82d26afd8f56f64de358f1b7520554077c39bc444fa00f34be95249e82baff0cf59a185411cd70d2d795ae91da549d071b78b89d30e5e40d81bb1d5ada4ad5df5ef5cb64cbad6a3131ca54d79e06104578c99730c9820042c5ced96a32c207c86d9f13654a1aaac3f45c17019eb608f942e9aae78253f92f6309aac3af345fc204a9ad7f808eb79b434dc8eb2d18d6d667ee2c0081838b5a59229b27480ef7079425d3ef821d051dff12cfca459f9e33b070c87ad8600f796902adc365d7e1d10b7fc038be8ab3eec.0xde6a4e6304b834e75feb562c2f05e6b9f56bdae435a4a75599e6cab5dabc74c6; Max-Age=86400; Path=/;
+
+[Body]
+
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <title>403 Forbidden</title>
+  </head>
+  <body>
+    <h1>Error 403 Forbidden</h1>
+    <p>Forbidden</p>
+    <h3>Error 54113</h3>
+    <p>Details: cache-bur-kbur8200138-BUR 1794461948 3762427979</p>
+    <hr>
+    <p>Varnish cache server</p>
+  </body>
+</html>
+
+
+────────────────────────────────────────────────────────────────
+
+[2026-11-12 00:39:10] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 00:39:10] PROXY → gw.dataimpulse.com:823 [403]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="131", "Chromium";v="131"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+Accept-Ranges: bytes
+Content-Length: 424
+Content-Type: text/html; charset=utf-8
+Date: Thu, 12 Nov 2026 05:39:10 GMT
+Retry-After: 0
+Server: Varnish
+Via: 1.1 varnish
+X-Backend: west|cache-yvr-cyvr160055|1
+X-Cdn-Cache: MISS
+X-Cdn-Cache-Hits: 0
+X-Cdn-Served-By: cache-yvr-cyvr160055-YVR
+X-Cdn-Timer: S1794461950.130989,VS0,VE51
+
+[Cookies Recivied]
+WcoSMza=4613d306824e40f098a95745094fdada.d697d7d85b358723955123880dcd1165bb92a6d17993d9c4d0d554dc82b205be0b81bb0978f0ab18b33111c9e6cf6b87ea3d10788babaeb09db87b3e1e1ca30b622a45a52e528fc11196e5bc941a685c74bd18b24738533a2753650eb9cf8419a75213e53e7e85e80985a1fb195c2d926e879f50490f3e5fcf06876b8fd5b51b23282273685b822a34ee6bad4c39e9d82cf95adc2e3ac3fd30441a44b082f581713c3a4a3e00576ea96f739abe41f16a3e91d046f85d8707afca04195b0155750e165d758c7e41cbbd3907c580ff6b4c8648c1768a68d5f09a3a3a35ecf7dc1967.0xd0dcdb9cb8e2ca3165d43b4859c80d6591b26b8b7d37aa61e4b4618ed914bb71; Max-Age=86400; Path=/;
+
+[Body]
+
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <title>403 Forbidden</title>
+  </head>
+  <body>
+    <h1>Error 403 Forbidden</h1>
+    <p>Forbidden</p>
+    <h3>Error 54113</h3>
+    <p>Details: cache-yvr-cyvr160055-YVR 1794461950 1026920628</p>
+    <hr>
+    <p>Varnish cache server</p>
+  </body>
+</html>
+
+
+────────────────────────────────────────────────────────────────
+
+[2026-11-12 00:39:13] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 00:39:13] PROXY → gw.dataimpulse.com:823 [403]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="131", "Chromium";v="131"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+Accept-Ranges: bytes
+Content-Length: 425
+Content-Type: text/html; charset=utf-8
+Date: Thu, 12 Nov 2026 05:39:13 GMT
+Retry-After: 0
+Server: Varnish
+Via: 1.1 varnish
+X-Backend: east|cache-nyc-kteb1890049|1
+X-Cdn-Cache: MISS
+X-Cdn-Cache-Hits: 0
+X-Cdn-Served-By: cache-nyc-kteb1890049-NYC
+X-Cdn-Timer: S1794461953.987668,VS0,VE80
+
+[Cookies Recivied]
+WcoSMza=4c87901acf1e44d5a5b51608d06119dc.fd6d38c1b75bdf76f245ebd41cae0c43d2c45a49ef363fab58be5e75d47f1ffb7f1ef2a70833a0f0bb5e1d57e6ab7905c6ee6d2f73b361a86025c492b4a2df9c22a3c787eb287f329e9daff156ff37d81f2d2c7e44fd15843683b0a93807f2ae6f5a9a87c40cb2eb1fc8b3c24eef1cbba0c63a3971d738592afa02b97e7e7d45cbbbb3bb55f9376651a67f95cafe88bc3dbf5cd3d3203f59f6e9e2c2af89b7a5e60f9f494baa07352138fa15b8ce11af98960563d7c10db2ba04ef96207a287e02f71a41059489f375ba6f86eb58b02eddaef6ab16c8f78b29caf786315f390c9c.0xd276438e3f397b157e90f1ae385ecb5cc4d7034a83587962a09332968b036999; Max-Age=86400; Path=/;
+
+[Body]
+
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <title>403 Forbidden</title>
+  </head>
+  <body>
+    <h1>Error 403 Forbidden</h1>
+    <p>Forbidden</p>
+    <h3>Error 54113</h3>
+    <p>Details: cache-nyc-kteb1890049-NYC 1794461953 2027673161</p>
+    <hr>
+    <p>Varnish cache server</p>
+  </body>
+</html>
+
+
+────────────────────────────────────────────────────────────────
+
+[2026-11-12 00:39:19] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 00:39:19] PROXY → gw.dataimpulse.com:823 [403]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="131", "Chromium";v="131"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+Accept-Ranges: bytes
+Content-Length: 425
+Content-Type: text/html; charset=utf-8
+Date: Thu, 12 Nov 2026 05:39:18 GMT
+Retry-After: 0
+Server: Varnish
+Via: 1.1 varnish
+X-Backend: east|cache-nyc-kteb1890042|1
+X-Cdn-Cache: MISS
+X-Cdn-Cache-Hits: 0
+X-Cdn-Served-By: cache-nyc-kteb1890042-NYC
+X-Cdn-Timer: S1794461958.215021,VS0,VE86
+
+[Cookies Recivied]
+WcoSMza=63fba0d5b7e54146b75066c45369ace4.aa854a1a17fddb349eb62dd347bdc7fbd54c7006d05d7fa859245b80a964fb3a84059d6400548a80ee2f6547b18d43ffa37f420611c1756e69bce44103d79fd86edb076f57f37649278545c6c4ed929ce62e92600725a5f5e17fb3b2eecd401bc32aca77a9479075956481feb5b432acd2a391120cda6f1077ee241acefb6543d664cfcc651a8e1c7fd6ac7bc7c15b27ce1b4d241a7dfe42eb058d086767a3229d3ceecf2ce6ee5dbf5f2b45ae0226c03ca2259a8f16b5d60e4b567969829c04385bc584b8163150af3dc21a5b4e82e39910d60e2f07c777639628ed017fcbed60.0xec20187e3f8f329e4b04cbef28c8f12b0e1167ae09266b07e086f69f467fbb2b; Max-Age=86400; Path=/;
+
+[Body]
+
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <title>403 Forbidden</title>
+  </head>
+  <body>
+    <h1>Error 403 Forbidden</h1>
+    <p>Forbidden</p>
+    <h3>Error 54113</h3>
+    <p>Details: cache-nyc-kteb1890042-NYC 1794461958 3424296666</p>
+    <hr>
+    <p>Varnish cache server</p>
+  </body>
+</html>
+
+//------- HASTA AQUI ha hecho 4 intentos, lo cual vuelve desde el principio---
+────────────────────────────────────────────────────────────────
+
+00:39:19.013 DBG [IMAP][OP:BBE85C][LOGOUT] Logging out and closing session...
+00:39:19.201 DBG [IMAP][OP:BBE85C][CLOSE] Closing connection socket
+00:39:19.212 DBG [MAIL][OP:8E7F69] ==== INICIANDO VERIFICACIÓN DE CORREO ====
+00:39:19.212 DBG [MAIL][OP:8E7F69] Email: h***@t-online.de | Dominio: t-online.de | Solicitado: imap
+00:39:19.212 DBG [MAIL][OP:8E7F69] Servidor detectado: secureimap.t-online.de:993 | Protocolo: imap | TLSMode: SSL
+00:39:19.212 DBG [MAIL][OP:8E7F69] Connection mode: DIRECT | Target: secureimap.t-online.de:993
+00:39:19.255 DBG [NET][OP:8E7F69][DNS] OK in 42ms - Host: secureimap.t-online.de IP: 194.25.134.114
+00:39:19.437 DBG [NET][OP:8E7F69][TCP] OK in 183ms - Target: 194.25.134.114:993
+00:39:20.027 DBG [NET][OP:8E7F69][TLS Handshake (Implicit)] OK in 588ms - Host: secureimap.t-online.de
+00:39:20.027 DBG [IMAP][OP:8E7F69][GREETING] Server greeting accepted: * OK [CAPABILITY IMAP4 IMAP4rev1 QUOTA LITERAL+ NAMESPACE UIDPLUS IDLE SORT] IMAP Proxy ready (secureimap.t-online.de)
+00:39:20.029 DBG [IMAP][OP:8E7F69][LOGIN] Authenticating user: h***@t-online.de (Password: ********)
+00:39:20.227 DBG [IMAP][OP:8E7F69][LOGIN] Authentication SUCCESS in 199ms
+00:39:20.227 DBG [IMAP][OP:8E7F69][SELECT] Selecting mailbox: INBOX
+00:39:20.417 DBG [IMAP][OP:8E7F69][SELECT] Selected INBOX successfully
+00:39:20.417 DBG [MAIL][OP:8E7F69] Autenticación EXITOSA en 1.205s
+[2026-11-12 00:39:22] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 00:39:22] PROXY → gw.dataimpulse.com:823 [403]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="144", "Chromium";v="144"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+Accept-Ranges: bytes
+Content-Length: 425
+Content-Type: text/html; charset=utf-8
+Date: Thu, 12 Nov 2026 05:39:21 GMT
+Retry-After: 0
+Server: Varnish
+Via: 1.1 varnish
+X-Backend: east|cache-nyc-kteb1890084|1
+X-Cdn-Cache: MISS
+X-Cdn-Cache-Hits: 0
+X-Cdn-Served-By: cache-nyc-kteb1890084-NYC
+X-Cdn-Timer: S1794461962.903613,VS0,VE81
+
+[Cookies Recivied]
+WcoSMza=03ca4b2a33664b1891e51db2df4d4649.72284dc64d1e80f5931ef598ab55df15f7dc07f490feb4cbfcd7de788b50cedf922a9b681eca2feebe25ab8080488225c2ca0c42301455c75bd4f05972eac0025ce808a58cd177aaadae75ef9cf9c7624dee2411b173030de2902add02abb951b15e3dc81bea9d36d5b1cad6acb33a82075493ddaa33614ef0203b868960370d8aa78cee9078b69cdede2cf079c994c0ac1422677af758b4df517deff669d52dddd52be41c2a6cb0ecfe3327d1e5abd6c21e6a17253290753f72524370107ce74cac6df966006fb48d750e48b88de1a49aac4f50fbfdbd1557d0ca268eaaf14a40.0xb0b5d9b26540da60d9a9ab3198f507d2e30a835eab804e812e1a0fc707ed6cc2; Max-Age=86400; Path=/;
+
+[Body]
+
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <title>403 Forbidden</title>
+  </head>
+  <body>
+    <h1>Error 403 Forbidden</h1>
+    <p>Forbidden</p>
+    <h3>Error 54113</h3>
+    <p>Details: cache-nyc-kteb1890084-NYC 1794461962 3967581821</p>
+    <hr>
+    <p>Varnish cache server</p>
+  </body>
+</html>
+
+
+────────────────────────────────────────────────────────────────
+
+[2026-11-12 00:39:25] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 00:39:25] PROXY → gw.dataimpulse.com:823 [403]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="144", "Chromium";v="144"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+Accept-Ranges: bytes
+Content-Length: 424
+Content-Type: text/html; charset=utf-8
+Date: Thu, 12 Nov 2026 05:39:24 GMT
+Retry-After: 0
+Server: Varnish
+Via: 1.1 varnish
+X-Backend: west|cache-yvr-cyvr160072|1
+X-Cdn-Cache: MISS
+X-Cdn-Cache-Hits: 0
+X-Cdn-Served-By: cache-yvr-cyvr160072-YVR
+X-Cdn-Timer: S1794461965.884829,VS0,VE54
+
+[Cookies Recivied]
+WcoSMza=fe5378299aec481fb3cb091b2fd5279b.d009e6644a50e17c616eabcc2d6616bac2c41f9890ce7b9a54ef3a7dbc2837edd334c2d55af9ad0d2432d939e7c226446d99d6dd3788c42a8cb2678f9b49093f510ffb1dd7447d80995dfa5a6dc40609688ced0229d929ec3d1bddf4ed4140082b18c29fff7cecad956ea59ef85c94a81d0cbb201e506a0e2d967010189c604ec78cefe1b0ee4477a9ee51421083550e09bdb81b4f230f302c33c5db2962a4c6e13ee3261fd0f15c18f66260b7d58623108e2de2bfbbabd3c32361a0b7272a87bebc25bdd01d241d34f02163fd0eae64e30bf7d169a9b8639f6106063a7cfa08fc.0x29e8e3a991df0c616cc881e8b6348a66e92aeb616f80339271ec9594fa13bf13; Max-Age=86400; Path=/;
+
+[Body]
+
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <title>403 Forbidden</title>
+  </head>
+  <body>
+    <h1>Error 403 Forbidden</h1>
+    <p>Forbidden</p>
+    <h3>Error 54113</h3>
+    <p>Details: cache-yvr-cyvr160072-YVR 1794461965 2201686230</p>
+    <hr>
+    <p>Varnish cache server</p>
+  </body>
+</html>
+
+
+────────────────────────────────────────────────────────────────
+
+[2026-11-12 00:39:28] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 00:39:28] PROXY → gw.dataimpulse.com:823 [403]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="144", "Chromium";v="144"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+Accept-Ranges: bytes
+Content-Length: 424
+Content-Type: text/html; charset=utf-8
+Date: Thu, 12 Nov 2026 05:39:27 GMT
+Retry-After: 0
+Server: Varnish
+Via: 1.1 varnish
+X-Backend: east|cache-iad-khef600039|1
+X-Cdn-Cache: MISS
+X-Cdn-Cache-Hits: 0
+X-Cdn-Served-By: cache-iad-khef600039-IAD
+X-Cdn-Timer: S1794461968.820386,VS0,VE93
+
+[Cookies Recivied]
+WcoSMza=1857085230594055ad4c63ba9690cd8c.13490e6a25db857786f2b121350ccbad84fc4e6d3dccaff9e2e5e4c6aa0ab2c3daf0ca3787a8525ba7c197857ebd4c55c379bcb0a425ed95377871b289e8e917a6d0f1702f9fdf2e6b07b123738f984f19959c28ade3625e1e03dda0cb8127484071ed31e908362d6c9eefe39bfacbc5fe8c7a0baa33380d54d150a03cf75507a79b6d449af9ecd8c415489e7e0851459c3d8ae795bfa67c90f7150bdf6aa66d8dee13847990831c63fb4ed022bc763e5840845dcf1eae55f1e7f0448c62e49c06f4d6e36a3225c9bd61265664dd17e1269d60d7d90e4ebe2d8a65f4cd0b02577c.0x1c2cbeffed255d2879bcdd5c77773dd4da3156baa67a073dcc65c9b9634b24b1; Max-Age=86400; Path=/;
+
+[Body]
+
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <title>403 Forbidden</title>
+  </head>
+  <body>
+    <h1>Error 403 Forbidden</h1>
+    <p>Forbidden</p>
+    <h3>Error 54113</h3>
+    <p>Details: cache-iad-khef600039-IAD 1794461968 3446208020</p>
+    <hr>
+    <p>Varnish cache server</p>
+  </body>
+</html>
+
+
+────────────────────────────────────────────────────────────────
+
+[2026-11-12 00:39:31] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 00:39:31] PROXY → gw.dataimpulse.com:823 [403]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="144", "Chromium";v="144"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+Accept-Ranges: bytes
+Content-Length: 424
+Content-Type: text/html; charset=utf-8
+Date: Thu, 12 Nov 2026 05:39:31 GMT
+Retry-After: 0
+Server: Varnish
+Via: 1.1 varnish
+X-Backend: east|cache-pdk-kfty8610030|1
+X-Cdn-Cache: MISS
+X-Cdn-Cache-Hits: 0
+X-Cdn-Served-By: cache-pdk-kfty8610030-PDK
+X-Cdn-Timer: S1794461971.036307,VS0,VE131
+
+[Cookies Recivied]
+WcoSMza=511620b46ebc43479127fe3eded1583a.ce8d1c98a4135260e97f7612b5df9537968c14d6802e7f9630ed42f525c649450a90c9528c854794eb67e94d91cc72695be4640770e3c30e29f9dbca451de9631c3d0c9b08d6ab02d962da37354cb8e8c03f6e61e87b13285f4fbb245b06ece16bd94759fc1503435504eb8edab728b4833664abaf81de69abecc34e9024be0b452d28cbcccc74611bb5e6f04c443aa67208d8c04daa8c2d389233342506eae7f6b77230c8079d5c64029d47e0ac8cbe079b0734564fdf265fcbb953fcb9cbf62ee537f94b016b889f175f2cc77daa2753d0ca7a77f3ed54906a36b54b2bd5b0f5.0x89e46db0ba55738ce56e106a2e0767349338106bf7eb1b26baf2ca13aaacf796; Max-Age=86400; Path=/;
+
+[Body]
+
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <title>403 Forbidden</title>
+  </head>
+  <body>
+    <h1>Error 403 Forbidden</h1>
+    <p>Forbidden</p>
+    <h3>Error 54113</h3>
+    <p>Details: cache-pdk-kfty8610030-PDK 1794461971 521785755</p>
+    <hr>
+    <p>Varnish cache server</p>
+  </body>
+</html>
+
+//--- aqui vuelve hacer 4 intentos mas - en la segunda pasada, es decir ya van 8 re-intentos
+────────────────────────────────────────────────────────────────
+
+00:39:31.874 DBG [IMAP][OP:8E7F69][LOGOUT] Logging out and closing session...
+00:39:32.060 DBG [IMAP][OP:8E7F69][CLOSE] Closing connection socket
+00:39:32.064 DBG [MAIL][OP:28A6F6] ==== INICIANDO VERIFICACIÓN DE CORREO ====
+00:39:32.064 DBG [MAIL][OP:28A6F6] Email: h***@t-online.de | Dominio: t-online.de | Solicitado: imap
+00:39:32.065 DBG [MAIL][OP:28A6F6] Servidor detectado: secureimap.t-online.de:993 | Protocolo: imap | TLSMode: SSL
+00:39:32.065 DBG [MAIL][OP:28A6F6] Connection mode: DIRECT | Target: secureimap.t-online.de:993
+00:39:32.108 DBG [NET][OP:28A6F6][DNS] OK in 43ms - Host: secureimap.t-online.de IP: 194.25.134.51
+00:39:32.294 DBG [NET][OP:28A6F6][TCP] OK in 186ms - Target: 194.25.134.51:993
+00:39:32.888 DBG [NET][OP:28A6F6][TLS Handshake (Implicit)] OK in 593ms - Host: secureimap.t-online.de
+00:39:32.888 DBG [IMAP][OP:28A6F6][GREETING] Server greeting accepted: * OK [CAPABILITY IMAP4 IMAP4rev1 QUOTA LITERAL+ NAMESPACE UIDPLUS IDLE SORT] IMAP Proxy ready (secureimap.t-online.de)
+00:39:32.889 DBG [IMAP][OP:28A6F6][LOGIN] Authenticating user: h***@t-online.de (Password: ********)
+00:39:33.089 DBG [IMAP][OP:28A6F6][LOGIN] Authentication SUCCESS in 200ms
+00:39:33.089 DBG [IMAP][OP:28A6F6][SELECT] Selecting mailbox: INBOX
+00:39:33.282 DBG [IMAP][OP:28A6F6][SELECT] Selected INBOX successfully
+00:39:33.282 DBG [MAIL][OP:28A6F6] Autenticación EXITOSA en 1.217s
+[2026-11-12 00:39:39] GET →  https://www.paramountplus.com/account/signin/
+[2026-11-12 00:39:39] PROXY → gw.dataimpulse.com:823 [200]
+
+[Send Headers]
+"sec-ch-ua":                 ""Not(A:Brand";v="99", "Google Chrome";v="146", "Chromium";v="146"",
+"sec-ch-ua-mobile":          "?0",
+"sec-ch-ua-platform":        ""Windows"",
+"upgrade-insecure-requests": "1",
+"user-agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+"sec-fetch-site":            "none",
+"sec-fetch-mode":            "navigate",
+"sec-fetch-user":            "?1",
+"sec-fetch-dest":            "document",
+"accept-encoding":           "gzip, deflate, br",
+"accept-language":           "en-US,en;q=0.9",
+[Send Cookies]
+
+[BODY]
+
+[RESPONSE]
+[Headers Recivied]
+Accept-Ranges: bytes
+Age: 0
+Cache-Control: no-cache
+Connection: keep-alive
+Content-Type: text/html; charset=utf-8
+Date: Thu, 12 Nov 2026 05:39:37 GMT
+Expires: Thu, 12 Nov 2026 05:39:36 GMT
+Server: openresty
+Vary: Accept-Encoding
+Via: 1.1 www-cache-679557b6fc-m5q64 (Varnish/7.2), 1.1 google, 1.1 varnish
+X-Backend: east|cache-iad-khef600051|0
+X-Cdn-Cache: ZIP, MISS
+X-Cdn-Cache-Hits: 0
+X-Cdn-Served-By: cache-iad-khef600051-IAD
+X-Cdn-Timer: S1794461978.736360,VS0,VE189
+X-Frame-Options: SAMEORIGIN
+X-Origin-Cache: MISS
+X-Origin-Hit-Count: 0
+X-Real-Server: international_www_web_prod_vip1
+
+[Cookies Recivied]
+CBS_RR=deleted; expires=Thu, 01 Jan 1970 00:00:01 GMT; Max-Age=0; path=/; secure; HttpOnly; SameSite=Lax
+PP_LOCALE=es-mx; expires=Fri, 12 Nov 2027 05:39:37 GMT; Max-Age=31536000; path=/; secure; HttpOnly; SameSite=Lax
+ovvuid=2b373685-4090-4607-b110-77883b4747a4; expires=Fri, 13 Nov 2026 05:39:37 GMT; Max-Age=86400; path=/
+
+[Body]
+<!doctype html>
+
+<html lang="es-mx">
+
+<head>
+    <script type="text/javascript">
+        // Check if the pathname ends with double slashes
+        if (window.location.pathname.match(//{2,}$/)) {
+            // Remove the double slashes at the end of the pathname
+            const correctedPath = window.location.pathname.replace(//+$/, '');
+            const correctedUrl = window.location.origin + correctedPath + window.location.search;
+
+            // Redirect to the corrected URL
+            window.location.assign(correctedUrl);
+        }
+    </script>
+.................
+
+aqui ya salio todo bien es decir en el re-intento 9

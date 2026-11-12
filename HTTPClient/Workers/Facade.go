@@ -235,10 +235,6 @@ func EnableSessionID(enabled ...bool) PoolOption {
 	}
 }
 
-// EneableSessionID es un alias de conveniencia para EnableSessionID.
-func EneableSessionID(enabled ...bool) PoolOption {
-	return EnableSessionID(enabled...)
-}
 
 // DisableSessionID deshabilita la inyección de la cabecera x-session-id (comportamiento seguro por defecto).
 func DisableSessionID() PoolOption {
