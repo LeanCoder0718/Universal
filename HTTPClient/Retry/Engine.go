@@ -208,7 +208,7 @@ func (d *DefaultClassifier) Classify(s Signal) ErrorClass {
 		isGenericKeywordOnly := false
 		if s.StatusCode >= 200 && s.StatusCode < 300 {
 			hasSpecificAntiBot := containsAny(s.BodySample, []string{
-				"challenge-platform", "_cf_chl", "turnstile", "datadome", "incapsula", "radware", "rdwr",
+				"challenge-platform", "_cf_chl", "turnstile",  "radware", "rdwr",
 				"verifying you are human", "verify you are human", "attention required", "_event_transid",
 			})
 			if !hasSpecificAntiBot {
