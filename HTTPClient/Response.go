@@ -216,7 +216,8 @@ func isChallengeResponse(headers fhttp.Header, body []byte) bool {
 		"turnstile",
 		"pardon our interruption",
 		"pardon the interruption",
-		"datadome",
+		"geo.captcha-delivery.com",
+		"datadome.co/captcha",
 		"enable javascript and cookies to continue",
 	}
 	for _, kw := range challengeKeywords {
