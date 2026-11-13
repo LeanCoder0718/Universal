@@ -2,6 +2,7 @@
 package Retry
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"math"
@@ -105,8 +106,6 @@ func NewDefaultClassifier() *DefaultClassifier {
 			"Access Denied",
 			"COUNTRY_BLOCKED",
 			"country blocked",
-			"Forbidden",
-			"forbidden",
 			"Transaction ID:",
 		},
 		NetworkStatusSet: map[int]bool{500: true, 502: true, 504: true},
@@ -237,10 +236,16 @@ func (d *DefaultClassifier) Classify(s Signal) ErrorClass {
 	case s.StatusCode == 451:
 		return ClassBlocked
 	case s.StatusCode == 403:
+		// Si la respuesta es JSON legítimo de una API (ej. ViX {"errorCode":"INVALID_LOGIN"...}),
+		// es lógica de negocio definitiva y NUNCA debe reintentar.
+		trimmed := bytes.TrimSpace(s.BodySample)
+		if len(trimmed) > 0 && (trimmed[0] == '{' || trimmed[0] == '[') {
+			return ClassBusinessLogic
+		}
 		if len(s.BodySample) == 0 || containsAny(s.BodySample, d.WAFKeywords) || containsAny(s.BodySample, []string{"<html", "<!doctype html"}) {
 			return ClassBlocked
 		}
-		return ClassPermanent
+		return ClassBusinessLogic
 	case s.StatusCode == 500, s.StatusCode == 502, s.StatusCode == 504:
 		return ClassTransientNetwork
 	case containsAny(s.BodySample, []string{"COUNTRY_BLOCKED", "country blocked"}):

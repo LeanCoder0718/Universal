@@ -1103,7 +1103,11 @@ func (s *Session) attemptWith(ctx context.Context, st state, spec Spec, attemptN
 			MaxAttempts: maxAttempts,
 		})
 		if spec.NoRetry {
-			dec = retry.Decision{Retry: false, Class: retry.ClassPermanent}
+			if dec.Class != retry.ClassSuccess {
+				dec = retry.Decision{Retry: false, Class: retry.ClassPermanent}
+			} else {
+				dec.Retry = false
+			}
 		}
 		return result, dec
 	}
@@ -1249,7 +1253,11 @@ func (s *Session) attemptWith(ctx context.Context, st state, spec Spec, attemptN
 			MaxAttempts: maxAttempts,
 		})
 		if spec.NoRetry {
-			dec = retry.Decision{Retry: false, Class: retry.ClassPermanent}
+			if dec.Class != retry.ClassSuccess {
+				dec = retry.Decision{Retry: false, Class: retry.ClassPermanent}
+			} else {
+				dec.Retry = false
+			}
 		}
 		return result, dec
 	}
@@ -1279,7 +1287,11 @@ func (s *Session) attemptWith(ctx context.Context, st state, spec Spec, attemptN
 		RetryAfter:    resp.RetryAfter(),
 	})
 	if spec.NoRetry {
-		dec = retry.Decision{Retry: false, Class: retry.ClassPermanent}
+		if dec.Class != retry.ClassSuccess {
+			dec = retry.Decision{Retry: false, Class: retry.ClassPermanent}
+		} else {
+			dec.Retry = false
+		}
 	}
 	return result, dec
 }

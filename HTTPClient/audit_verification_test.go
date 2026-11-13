@@ -408,6 +408,20 @@ func TestAudit_Classifier_403NoInfiniteLoop(t *testing.T) {
 	if decWAFMax.Retry {
 		t.Errorf("al alcanzar MaxAttempts NUNCA debe continuar reintentando (bucle infinito prevenido)")
 	}
+
+	// 3. 403 con respuesta JSON de API (ej. ViX INVALID_LOGIN con "error":"Forbidden")
+	// NUNCA debe reintentar, debe clasificarse como ClassBusinessLogic con Retry = false
+	decVix := engine.Decide(1, retry.Signal{
+		StatusCode: 403,
+		Method:     "POST",
+		BodySample: []byte(`{"error":"Forbidden","errorCode":"INVALID_LOGIN","message":"Invalid Login","statusCode":403}`),
+	})
+	if decVix.Retry {
+		t.Errorf("403 con JSON de API (ViX INVALID_LOGIN) NUNCA debe reintentar")
+	}
+	if decVix.Class != retry.ClassBusinessLogic {
+		t.Errorf("esperado ClassBusinessLogic para JSON 403, got %v", decVix.Class)
+	}
 }
 
 func TestAudit_SanitizeURL_QueryParamRedaction(t *testing.T) {
