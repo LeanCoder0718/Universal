@@ -110,7 +110,7 @@ func (b *Builder) Build(spec Spec, cookieHeader string) (*fhttp.Request, error) 
 	for k, v := range spec.Extra {
 		if strings.EqualFold(k, "User-Agent") {
 			ua = v
-			if strings.Contains(v, "Android") || strings.Contains(v, "okhttp") {
+			if strings.Contains(strings.ToLower(v), "okhttp") {
 				secUA = ""
 				secMobile = ""
 				secPlatform = ""

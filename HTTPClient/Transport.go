@@ -60,9 +60,10 @@ func (TLSClientFactory) New(p Params) (Client, error) {
 		options = append(options, tlsclient.WithInsecureSkipVerify())
 	}
 
-	if p.Jar != nil {
-		options = append(options, tlsclient.WithCookieJar(NewTLSClientAdapter(p.Jar)))
-	}
+	// Jar is managed directly by Session/Builder to avoid duplicate headers in tls-client
+	// if p.Jar != nil {
+	// 	options = append(options, tlsclient.WithCookieJar(NewTLSClientAdapter(p.Jar)))
+	// }
 
 	switch p.Protocol {
 	case ProtocolHTTP1:

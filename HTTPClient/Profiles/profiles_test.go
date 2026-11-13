@@ -76,6 +76,17 @@ func TestProfileRegistry_Categories(t *testing.T) {
 			t.Errorf("WindowsChrome profile %s has invalid platform/client: %s / %s", p.ID(), p.Platform(), p.ClientType())
 		}
 	}
+
+	// 6. Android Chrome mode
+	androidChromeProfiles := catalog.ForMode(Profiles.ModeAndroidChrome)
+	if len(androidChromeProfiles) == 0 {
+		t.Fatalf("ForMode(ModeAndroidChrome) returned 0 profiles")
+	}
+	for _, p := range androidChromeProfiles {
+		if p.Platform() != Profiles.PlatformAndroid || p.ClientType() != Profiles.ClientChrome {
+			t.Errorf("AndroidChrome profile %s has invalid platform/client: %s / %s", p.ID(), p.Platform(), p.ClientType())
+		}
+	}
 }
 
 // TestProfileManager_ValidationFailFast tests all edge cases and error handling (No panics!).

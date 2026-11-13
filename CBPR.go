@@ -512,7 +512,7 @@ func PrintStepDelimiter() {
 	fmt.Println()
 }
 
-func UIStart() (string, int64, []string, int, string) {
+func UIStart() (string, []string, int, string) {
 	PrintStepDelimiter()
 	Threader := Utils.ReadInt(fmt.Sprintf("%s %s", Red(" →"), "¿Cuantos Hilos o Taks?: "), 1)
 
@@ -520,7 +520,7 @@ func UIStart() (string, int64, []string, int, string) {
 	proxyType := SelectProxy()
 
 	PrintStepDelimiter()
-	comboFilePath, totalLines, err := OpenCombo()
+	comboFilePath, _, err := OpenCombo()
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -534,7 +534,7 @@ func UIStart() (string, int64, []string, int, string) {
 	}
 
 	PrintStepDelimiter()
-	return comboFilePath, totalLines, ProxyList, Threader, proxyType
+	return comboFilePath, ProxyList, Threader, proxyType
 }
 
 func SelectProxy() string {

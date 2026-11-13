@@ -172,7 +172,7 @@ func DefaultStrategyForMode(mode ProfileMode) SelectionStrategy {
 	switch mode {
 	case Browser:
 		return NewRoundRobin()
-	case Android, IOS:
+	case Android, AndroidChrome, IOS:
 		return NewRoundRobin()
 	default:
 		return NewRoundRobin()

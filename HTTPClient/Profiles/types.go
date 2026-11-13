@@ -89,6 +89,7 @@ const (
 	IOS                                  // Todos los perfiles de iOS (Safari iOS)
 	Windows                              // Todos los browsers de Windows Desktop (Chrome, Edge, Firefox Windows)
 	WindowsChrome                        // Perfiles netamente de Windows Chrome (Chrome 131 hasta 152)
+	AndroidChrome                        // Perfiles de Android Chrome / WebView (Chrome 131, 133 Mobile)
 
 	// Aliases de compatibilidad
 	ModeBrowser       = Browser
@@ -96,6 +97,7 @@ const (
 	ModeIOS           = IOS
 	ModeWindows       = Windows
 	ModeWindowsChrome = WindowsChrome
+	ModeAndroidChrome = AndroidChrome
 )
 
 // String devuelve el nombre legible del modo de perfil.
@@ -111,6 +113,8 @@ func (m ProfileMode) String() string {
 		return "Windows"
 	case WindowsChrome:
 		return "Windows Chrome"
+	case AndroidChrome:
+		return "Android Chrome"
 	default:
 		return "Unknown"
 	}
