@@ -240,7 +240,7 @@ func (d *DefaultClassifier) Classify(s Signal) ErrorClass {
 		if len(s.BodySample) == 0 || containsAny(s.BodySample, d.WAFKeywords) || containsAny(s.BodySample, []string{"<html", "<!doctype html"}) {
 			return ClassBlocked
 		}
-		return ClassBusinessLogic
+		return ClassPermanent
 	case s.StatusCode == 500, s.StatusCode == 502, s.StatusCode == 504:
 		return ClassTransientNetwork
 	case containsAny(s.BodySample, []string{"COUNTRY_BLOCKED", "country blocked"}):
