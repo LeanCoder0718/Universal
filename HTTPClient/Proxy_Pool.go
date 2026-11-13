@@ -23,8 +23,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// FormatProxyUserWithSession reemplaza o agrega el sufijo de sesión al usuario del proxy.
-// Soporta tanto la convención DataImpulse (__sessid.<id>) como proveedores estándar (-session-<id>).
+// FormatProxyUserWithSession reemplaza o agrega el sufijo -session-<sessionID> al usuario del proxy.
 func FormatProxyUserWithSession(user, sessionID string) string {
 	if user == "" || sessionID == "" {
 		return user
@@ -48,21 +47,8 @@ func FormatProxyUserWithSession(user, sessionID string) string {
 			cleanUser = cleanUser[:idx] + rest[endIdx:]
 		}
 	}
-
-	// Normalizar sessionID a formato alfanumérico limpio (sin guiones)
-	cleanSess := strings.ReplaceAll(sessionID, "-", "")
-	if len(cleanSess) > 12 {
-		cleanSess = cleanSess[:12]
-	}
-
-	// Si el usuario usa la convención DataImpulse con doble guión bajo (ej: username__cr.us o username__sessid.)
-	if strings.Contains(user, "__") {
-		cleanUser = strings.TrimRight(cleanUser, "_")
-		return fmt.Sprintf("%s__sessid.%s", cleanUser, cleanSess)
-	}
-
 	cleanUser = strings.TrimRight(cleanUser, "-_")
-	return fmt.Sprintf("%s-session-%s", cleanUser, cleanSess)
+	return fmt.Sprintf("%s-session-%s", cleanUser, sessionID)
 }
 
 type Type string

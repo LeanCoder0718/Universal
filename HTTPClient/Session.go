@@ -410,7 +410,7 @@ func (s *Session) buildClient() error {
 		if err != nil {
 			return fmt.Errorf("browser: resolviendo proxy: %w", err)
 		}
-		if shouldApplySessionToProxyUser(s.proxyPool, s.cfg.Proxy, resolved.User) && s.stickyID != "" {
+		if (s.proxyPool.Mode() == ModeSticky || s.cfg.Proxy.Sticky) && s.stickyID != "" && resolved.User != "" {
 			resolved.User = FormatProxyUserWithSession(resolved.User, s.stickyID)
 		}
 		entry = &resolved
@@ -830,36 +830,16 @@ func (s *Session) SetExplicitProxy(e Entry) error {
 	return s.setExplicitProxyLocked(e)
 }
 
-// shouldApplySessionToProxyUser determina si la credencial del proxy califica para inyección
-// de identificador de sesión dinámica (DataImpulse, Smartproxy, BrightData, backconnect gateway o 1 solo proxy).
-func shouldApplySessionToProxyUser(pool *Pool, cfg ProxyConfig, user string) bool {
-	if user == "" {
-		return false
-	}
-	// 1. Configuración explícita de Sticky
-	if (pool != nil && pool.Mode() == ModeSticky) || cfg.Sticky {
-		return true
-	}
-	// 2. Si el pool cuenta con 1 solo proxy (gateway residencial rotativo)
-	if pool != nil && pool.Count() == 1 {
-		return true
-	}
-	// 3. Si el usuario ya contiene marcadores de sesión conocidos
-	if strings.Contains(user, "__") || strings.Contains(user, "-session-") || strings.Contains(user, "sessid") {
-		return true
-	}
-	return false
-}
-
 func (s *Session) setExplicitProxyLocked(e Entry, forceRotate ...bool) error {
 	entry := e
 	forced := len(forceRotate) > 0 && forceRotate[0]
 
-	if shouldApplySessionToProxyUser(s.proxyPool, s.cfg.Proxy, entry.User) && s.stickyID != "" {
+	if (s.proxyPool != nil && (s.proxyPool.Mode() == ModeSticky || s.cfg.Proxy.Sticky)) && s.stickyID != "" && entry.User != "" {
 		entry.User = FormatProxyUserWithSession(entry.User, s.stickyID)
 	}
 
-	// Si no es rotación forzada y el proxy es idéntico al actual, preservar Keep-Alive
+	// Si no es rotación forzada y el proxy es exactamente idéntico al actual,
+	// PRESERVAR el pool de conexiones TCP Keep-Alive y sesiones TLS sin destruirlo.
 	if !forced && s.client != nil && s.currentProxy != nil &&
 		s.currentProxy.Host == entry.Host &&
 		s.currentProxy.Port == entry.Port &&
@@ -868,7 +848,9 @@ func (s *Session) setExplicitProxyLocked(e Entry, forceRotate ...bool) error {
 		return nil
 	}
 
-	// En caso de rotación forzada, invalidar la caché del cliente previo para obligar a abrir un nuevo socket
+	// En caso de rotación (por ejemplo tras fallo o bloqueo), cerrar las conexiones
+	// TCP Keep-Alive existentes y desalojar el cliente previo para que el gateway
+	// residencial abra un nuevo socket TCP y asigne una IP de salida fresca
 	if forced && s.client != nil {
 		s.client.CloseIdleConnections()
 		key := fmt.Sprintf("%s@%s_redir=%v", entry.key(), entry.User, s.cfg.Browser.FollowRedirects)

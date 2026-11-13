@@ -217,25 +217,3 @@ func TestProxyPool_Test8_ConcurrentRaceStress(t *testing.T) {
 		t.Fatal("no se registraron operaciones en los contadores del pool")
 	}
 }
-
-// TestSingleProxy_DataImpulseSessionRotation verifica que un gateway único (como DataImpulse)
-// rote la sesión en el username dinámicamente en cada llamada a rotateProxyLocked.
-func TestSingleProxy_DataImpulseSessionRotation(t *testing.T) {
-	// 1. Verificación del formateador de usuario para DataImpulse
-	user := "69528f6acd1705b29417__cr.us"
-	sess1 := "f47ac10b-58cc-4372-a567-0e02b2c3d479"
-	formatted1 := FormatProxyUserWithSession(user, sess1)
-	if formatted1 != "69528f6acd1705b29417__cr.us__sessid.f47ac10b58cc" {
-		t.Fatalf("esperado formato DataImpulse con __sessid, obtenido: %s", formatted1)
-	}
-
-	// 2. Rotación subsecuente sobre el usuario ya formateado
-	sess2 := "12345678-abcd-ef01-2345-6789abcdef01"
-	formatted2 := FormatProxyUserWithSession(formatted1, sess2)
-	if formatted2 != "69528f6acd1705b29417__cr.us__sessid.12345678abcd" {
-		t.Fatalf("esperada rotación limpia de __sessid, obtenido: %s", formatted2)
-	}
-	if formatted1 == formatted2 {
-		t.Fatalf("los usernames con distintas sesiones deben ser diferentes")
-	}
-}
