@@ -289,3 +289,15 @@ func TestWorkerPool_InternalRetriesDecoupled(t *testing.T) {
 		t.Fatalf("esperado cfg.Retry.MaxAttempts = 1 con WithNoInternalRetries, obtenido %d", poolExplicit.cfg.Retry.MaxAttempts)
 	}
 }
+
+func TestWorkers_WithRetryStatusCodes(t *testing.T) {
+	pool, err := QuickStart(10, []string{"127.0.0.1:8080:u:p"}, "http", 3, WithRetryStatusCodes(400, 429))
+	if err != nil {
+		t.Fatalf("falló QuickStart con WithRetryStatusCodes: %v", err)
+	}
+	defer pool.Close()
+
+	if len(pool.cfg.Retry.RetryStatusCodes) != 2 || pool.cfg.Retry.RetryStatusCodes[0] != 400 || pool.cfg.Retry.RetryStatusCodes[1] != 429 {
+		t.Fatalf("esperado RetryStatusCodes = [400, 429], obtenido %v", pool.cfg.Retry.RetryStatusCodes)
+	}
+}

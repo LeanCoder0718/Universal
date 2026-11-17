@@ -142,6 +142,27 @@ func (res *Result) IsChallenge() bool {
 	return res.Response.IsChallenge()
 }
 
+// HasStatusCode verifica si el código de estado de la respuesta coincide con alguno de los códigos indicados.
+func (r *Response) HasStatusCode(codes ...int) bool {
+	if r == nil {
+		return false
+	}
+	for _, c := range codes {
+		if r.StatusCode == c {
+			return true
+		}
+	}
+	return false
+}
+
+// HasStatusCode verifica si el código de estado del resultado coincide con alguno de los códigos indicados.
+func (res *Result) HasStatusCode(codes ...int) bool {
+	if res == nil || res.Response == nil {
+		return false
+	}
+	return res.Response.HasStatusCode(codes...)
+}
+
 func isBlockedResponse(headers fhttp.Header, body []byte) bool {
 	if headers != nil {
 		for k, vv := range headers {
@@ -168,6 +189,8 @@ func isBlockedResponse(headers fhttp.Header, body []byte) bool {
 		"country_blocked",
 		"country blocked",
 		`code":"throttled`,
+		"transaction id:",
+		"the page you are looking for is unavailable",
 	}
 	for _, kw := range wafKeywords {
 		if strings.Contains(lower, kw) {

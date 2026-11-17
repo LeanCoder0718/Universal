@@ -271,6 +271,14 @@ func WithNoInternalRetries() PoolOption {
 	return WithInternalRetries(1)
 }
 
+// WithRetryStatusCodes configura qué códigos de estado HTTP deben considerarse reintentables
+// (ej. 400, 403, 429, 500, 502, 503, 504), provocando rotación de proxy en lugar de abandono inmediato.
+func WithRetryStatusCodes(codes ...int) PoolOption {
+	return func(cfg *HTTPClient.Config) {
+		cfg.Retry.RetryStatusCodes = append(cfg.Retry.RetryStatusCodes, codes...)
+	}
+}
+
 // WithSessionOptions permite adjuntar opciones adicionales de HTTPClient.Session
 // al pool (por ejemplo WithTransportFactory para pruebas unitarias deterministas).
 func WithSessionOptions(opts ...HTTPClient.Option) PoolOption {

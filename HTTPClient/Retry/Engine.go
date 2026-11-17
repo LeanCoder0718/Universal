@@ -13,11 +13,12 @@ import (
 )
 
 type RetryConfig struct {
-	MaxAttempts  int
-	MaxRetries   int // Si MaxRetries > 0 y MaxAttempts == 0, equivale a MaxAttempts = MaxRetries + 1
-	WaitMin      time.Duration
-	WaitMax      time.Duration
-	JitterFactor float64
+	MaxAttempts      int
+	MaxRetries       int // Si MaxRetries > 0 y MaxAttempts == 0, equivale a MaxAttempts = MaxRetries + 1
+	WaitMin          time.Duration
+	WaitMax          time.Duration
+	JitterFactor     float64
+	RetryStatusCodes []int // Códigos de estado HTTP personalizados a reintentar (ej: 400, 403, 429, 500...)
 }
 
 type ErrorClass int
@@ -73,9 +74,10 @@ type Classifier interface {
 }
 
 type DefaultClassifier struct {
-	ChallengeKeywords []string
-	WAFKeywords       []string
-	NetworkStatusSet  map[int]bool
+	ChallengeKeywords    []string
+	WAFKeywords          []string
+	NetworkStatusSet     map[int]bool
+	CustomRetryStatusSet map[int]bool
 }
 
 func NewDefaultClassifier() *DefaultClassifier {
@@ -107,8 +109,10 @@ func NewDefaultClassifier() *DefaultClassifier {
 			"COUNTRY_BLOCKED",
 			"country blocked",
 			"Transaction ID:",
+			"The page you are looking for is unavailable",
 		},
-		NetworkStatusSet: map[int]bool{500: true, 502: true, 504: true},
+		NetworkStatusSet:     map[int]bool{500: true, 502: true, 504: true},
+		CustomRetryStatusSet: make(map[int]bool),
 	}
 }
 
@@ -220,6 +224,11 @@ func (d *DefaultClassifier) Classify(s Signal) ErrorClass {
 		}
 	}
 
+	// 0. Si el usuario configuró códigos de estado HTTP específicos a reintentar (ej: 400, 403, 429, 500, etc.)
+	if d.CustomRetryStatusSet != nil && d.CustomRetryStatusSet[s.StatusCode] {
+		return ClassBlocked
+	}
+
 	// 3. Body incompleto nunca es éxito, aunque el status sea 2xx.
 	if s.StatusCode >= 200 && s.StatusCode < 400 {
 		if s.BodyTruncated || !s.BodyComplete {
@@ -289,10 +298,36 @@ func New(cfg RetryConfig, classifier Classifier) *Engine {
 	if classifier == nil {
 		classifier = NewDefaultClassifier()
 	}
+	if len(cfg.RetryStatusCodes) > 0 {
+		if dc, ok := classifier.(*DefaultClassifier); ok {
+			if dc.CustomRetryStatusSet == nil {
+				dc.CustomRetryStatusSet = make(map[int]bool, len(cfg.RetryStatusCodes))
+			}
+			for _, code := range cfg.RetryStatusCodes {
+				dc.CustomRetryStatusSet[code] = true
+			}
+		}
+	}
 	return &Engine{
 		cfg:        cfg,
 		classifier: classifier,
 	}
+}
+
+// IsRetryableStatus determina si un código HTTP es considerado reintentable
+func (e *Engine) IsRetryableStatus(code int) bool {
+	if e == nil {
+		return false
+	}
+	if dc, ok := e.classifier.(*DefaultClassifier); ok {
+		if dc.CustomRetryStatusSet != nil && dc.CustomRetryStatusSet[code] {
+			return true
+		}
+		if dc.NetworkStatusSet != nil && dc.NetworkStatusSet[code] {
+			return true
+		}
+	}
+	return code == 429 || code == 503 || code == 403 || code == 500 || code == 502 || code == 504 || code == 451
 }
 
 func (e *Engine) Decide(attempt int, s Signal) Decision {

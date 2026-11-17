@@ -1398,6 +1398,15 @@ func (s *Session) IsAuthenticated() bool {
 	return s.preserveCookies.Load()
 }
 
+// IsRetryableStatus determina si un código HTTP específico es considerado reintentable en esta sesión
+// (según códigos estándar 403/429/500/502/503/504 o personalizados vía WithRetryStatusCodes).
+func (s *Session) IsRetryableStatus(code int) bool {
+	if s == nil || s.retryEng == nil {
+		return code == 403 || code == 429 || code == 500 || code == 502 || code == 503 || code == 504
+	}
+	return s.retryEng.IsRetryableStatus(code)
+}
+
 // ResetComboState vacía el Jar de cookies y prepara la sesión para el siguiente
 // combo. Mantiene la conexión TCP/TLS viva (connection reuse). Si rotateIdentity
 // es true, asigna un nuevo fingerprint de navegador sin cerrar sockets.
@@ -1780,15 +1789,20 @@ func sanitizeURL(rawURL string) string {
 		return rawURL
 	}
 	q := u.Query()
+	hasSensitive := false
 	sensitiveParams := []string{"password", "pass", "pwd", "token", "secret", "api_key", "apikey", "auth", "credential", "signature"}
 	for param := range q {
 		lowerParam := strings.ToLower(param)
 		for _, sens := range sensitiveParams {
 			if strings.Contains(lowerParam, sens) {
 				q.Set(param, "[REDACTED]")
+				hasSensitive = true
 				break
 			}
 		}
+	}
+	if !hasSensitive {
+		return rawURL
 	}
 	u.RawQuery = q.Encode()
 	return u.String()
