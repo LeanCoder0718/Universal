@@ -1186,7 +1186,7 @@ func (s *Session) attemptWith(ctx context.Context, st state, spec Spec, attemptN
 				delete(req.Header, k)
 			}
 		}
-		req.Header.Set("x-session-id", st.stickyID)
+		req.Header["x-session-id"] = []string{st.stickyID}
 		if order, ok := req.Header[HeaderOrderKey]; ok {
 			newOrder := make([]string, 0, len(order)+1)
 			for _, k := range order {
@@ -1650,15 +1650,13 @@ func (s *Session) debugLog(spec Spec, result *Result) {
 			}
 			if isSensitiveHeader(k) {
 				val = "[REDACTED]"
-			} else if strings.EqualFold(k, "x-session-id") {
-				if len(val) > 8 {
-					val = val[:4] + "***" + val[len(val)-4:]
-				} else if len(val) > 0 {
-					val = "***"
-				}
 			}
-			padding := strings.Repeat(" ", maxKeyLen-len(k)+1)
-			cBlue.Printf("\"%s\":%s\"%s\",\n", k, padding, val)
+			displayKey := k
+			if strings.EqualFold(k, "x-session-id") {
+				displayKey = "x-session-id"
+			}
+			padding := strings.Repeat(" ", maxKeyLen-len(displayKey)+1)
+			cBlue.Printf("\"%s\":%s\"%s\",\n", displayKey, padding, val)
 		}
 	} else if len(spec.Extra) > 0 {
 		var keys []string
@@ -1700,15 +1698,12 @@ func (s *Session) debugLog(spec Spec, result *Result) {
 		}
 		for _, k := range keys {
 			val := spec.Extra[k]
+			displayKey := k
 			if strings.EqualFold(k, "x-session-id") {
-				if len(val) > 8 {
-					val = val[:4] + "***" + val[len(val)-4:]
-				} else if len(val) > 0 {
-					val = "***"
-				}
+				displayKey = "x-session-id"
 			}
-			padding := strings.Repeat(" ", maxKeyLen-len(k)+1)
-			cBlue.Printf("\"%s\":%s\"%s\",\n", k, padding, val)
+			padding := strings.Repeat(" ", maxKeyLen-len(displayKey)+1)
+			cBlue.Printf("\"%s\":%s\"%s\",\n", displayKey, padding, val)
 		}
 	}
 

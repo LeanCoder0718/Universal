@@ -452,8 +452,8 @@ func TestSession_StickyID_ConcurrentSafe(t *testing.T) {
 	}
 }
 
-// 9. Test: Anonimización de x-session-id en registros de depuración (Debug Log).
-func TestSession_StickyID_DebugLogMasking(t *testing.T) {
+// 9. Test: Formato en minúsculas y sin truncar de x-session-id en registros de depuración (Debug Log).
+func TestSession_StickyID_DebugLogFormat(t *testing.T) {
 	oldStdout := os.Stdout
 	oldColorOutput := color.Output
 	r, w, err := os.Pipe()
@@ -497,14 +497,17 @@ func TestSession_StickyID_DebugLogMasking(t *testing.T) {
 	_, _ = io.Copy(&buf, r)
 	output := buf.String()
 
-	// El ID plano completo NO debe aparecer en el log
-	if strings.Contains(output, sid) {
-		t.Errorf("FUGA DE INFORMACIÓN: el x-session-id completo %q apareció en el log de depuración sin anonimizar", sid)
+	// Debe aparecer el header "x-session-id" exactamente en minúsculas
+	if !strings.Contains(output, `"x-session-id"`) {
+		t.Errorf("el log de depuración no contiene el header 'x-session-id' en minúsculas: %s", output)
 	}
-	// Debe contener la forma anonimizada con asteriscos
-	masked := sid[:4] + "***" + sid[len(sid)-4:]
-	if !strings.Contains(output, masked) {
-		t.Errorf("el log de depuración no contiene el valor anonimizado esperado %q", masked)
+	// El ID plano completo DEBE aparecer en el log sin truncar
+	if !strings.Contains(output, sid) {
+		t.Errorf("el x-session-id completo %q no apareció en el log de depuración: %s", sid, output)
+	}
+	// No debe contener asteriscos de truncamiento para el session-id
+	if strings.Contains(output, "***") {
+		t.Errorf("el log de depuración no debe contener asteriscos de truncamiento para x-session-id: %s", output)
 	}
 }
 
