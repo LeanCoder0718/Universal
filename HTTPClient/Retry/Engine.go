@@ -2,7 +2,6 @@
 package Retry
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"math"
@@ -212,7 +211,7 @@ func (d *DefaultClassifier) Classify(s Signal) ErrorClass {
 		isGenericKeywordOnly := false
 		if s.StatusCode >= 200 && s.StatusCode < 300 {
 			hasSpecificAntiBot := containsAny(s.BodySample, []string{
-				"challenge-platform", "_cf_chl", "turnstile",  "radware", "rdwr",
+				"challenge-platform", "_cf_chl", "turnstile", "radware", "rdwr",
 				"verifying you are human", "verify you are human", "attention required", "_event_transid",
 			})
 			if !hasSpecificAntiBot {
@@ -240,22 +239,9 @@ func (d *DefaultClassifier) Classify(s Signal) ErrorClass {
 	switch {
 	case s.StatusCode == 429:
 		return ClassRateLimited
-	case s.StatusCode == 503:
-		return ClassServerOverloaded
 	case s.StatusCode == 451:
 		return ClassBlocked
-	case s.StatusCode == 403:
-		// Si la respuesta es JSON legítimo de una API (ej. ViX {"errorCode":"INVALID_LOGIN"...}),
-		// es lógica de negocio definitiva y NUNCA debe reintentar.
-		trimmed := bytes.TrimSpace(s.BodySample)
-		if len(trimmed) > 0 && (trimmed[0] == '{' || trimmed[0] == '[') {
-			return ClassBusinessLogic
-		}
-		if len(s.BodySample) == 0 || containsAny(s.BodySample, d.WAFKeywords) || containsAny(s.BodySample, []string{"<html", "<!doctype html"}) {
-			return ClassBlocked
-		}
-		return ClassBusinessLogic
-	case s.StatusCode == 500, s.StatusCode == 502, s.StatusCode == 504:
+	case s.StatusCode == 503, s.StatusCode == 502, s.StatusCode == 504:
 		return ClassTransientNetwork
 	case containsAny(s.BodySample, []string{"COUNTRY_BLOCKED", "country blocked"}):
 		return ClassBlocked
