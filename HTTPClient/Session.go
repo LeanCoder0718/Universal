@@ -1014,10 +1014,10 @@ func (s *Session) Do(ctx context.Context, spec Spec) (*Result, error) {
 				result.PreserveBodyForError()
 			}
 
-			// Si spec.NoRetry es true o la respuesta es de lógica de negocio definitiva (ClassBusinessLogic),
+			// Si spec.NoRetry es true o decision.Retry es false (ej. ClassBusinessLogic o ClassPermanent),
 			// y la petición obtuvo una respuesta HTTP válida del servidor (rErr == nil):
 			// retornamos el resultado con err == nil para que el llamador pueda evaluar StatusCode y el Body.
-			if (spec.NoRetry || decision.Class == retry.ClassBusinessLogic) && rErr == nil && result != nil && result.Response != nil && result.Response.StatusCode > 0 {
+			if (spec.NoRetry || !decision.Retry) && rErr == nil && result != nil && result.Response != nil && result.Response.StatusCode > 0 {
 				return result, nil
 			}
 

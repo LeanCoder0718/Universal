@@ -133,7 +133,7 @@ func isChallengeHeader(headers map[string][]string) bool {
 			if kLower == "x-amzn-waf-action" && (strings.Contains(vLower, "challenge") || strings.Contains(vLower, "captcha")) {
 				return true
 			}
-			if kLower == "x-datadome" && (strings.Contains(vLower, "protected") || strings.Contains(vLower, "captcha") || strings.Contains(vLower, "block")) {
+			if kLower == "x-datadome" && (strings.Contains(vLower, "protected") || strings.Contains(vLower, "captcha")) {
 				return true
 			}
 		}
@@ -185,10 +185,6 @@ func (d *DefaultClassifier) Classify(s Signal) ErrorClass {
 	if isChallengeHeader(s.Headers) {
 		return ClassChallenge
 	}
-	if isWAFBlockedHeader(s.Headers) {
-		return ClassBlocked
-	}
-
 	// 2. Detección de pantallas de desafío anti-bot en el cuerpo (incluso si el código es 200 o 503)
 	if containsAny(s.BodySample, d.ChallengeKeywords) {
 		// Para respuestas 200 OK, prevenir falsos positivos con frases genéricas (ej. "<noscript>Enable JavaScript</noscript>")
@@ -205,28 +201,6 @@ func (d *DefaultClassifier) Classify(s Signal) ErrorClass {
 		}
 		if !isGenericKeywordOnly {
 			return ClassChallenge
-		}
-	}
-
-	// Detección de respuestas JSON con lógica de negocio definitiva (credenciales erróneas, respuestas de API)
-	// Si el servidor devolvió un JSON legítimo con error de negocio confirmado (ej. code 02 / datos incorrectos),
-	// NUNCA debe reintentar, independientemente del status code (incluso si la API respondió con HTTP 500 o 403).
-	trimmed := bytes.TrimSpace(s.BodySample)
-	if len(trimmed) > 0 && (trimmed[0] == '{' || trimmed[0] == '[') {
-		if containsAny(s.BodySample, []string{
-			`code":"02`,
-			`code":"01`,
-			`"code": "02"`,
-			`"code": "01"`,
-			`Alguno de los datos que ingresaste es incorrecto`,
-			`La contraseña es incorrecta`,
-			`No existe una cuenta con los datos que ingresaste`,
-			`INVALID_LOGIN`,
-			`USER_NOT_FOUND`,
-			`invalid_credentials`,
-			`bad_credentials`,
-		}) {
-			return ClassBusinessLogic
 		}
 	}
 
@@ -251,8 +225,6 @@ func (d *DefaultClassifier) Classify(s Signal) ErrorClass {
 	case s.StatusCode == 451:
 		return ClassBlocked
 	case s.StatusCode == 403:
-		// Si la respuesta es JSON legítimo de una API (ej. ViX {"errorCode":"INVALID_LOGIN"...}),
-		// es lógica de negocio definitiva y NUNCA debe reintentar.
 		trimmed403 := bytes.TrimSpace(s.BodySample)
 		if len(trimmed403) > 0 && (trimmed403[0] == '{' || trimmed403[0] == '[') {
 			return ClassBusinessLogic
@@ -261,7 +233,7 @@ func (d *DefaultClassifier) Classify(s Signal) ErrorClass {
 			return ClassBlocked
 		}
 		return ClassBusinessLogic
-	case s.StatusCode == 500, s.StatusCode == 502, s.StatusCode == 504:
+	case s.StatusCode == 502, s.StatusCode == 504:
 		return ClassTransientNetwork
 	case containsAny(s.BodySample, []string{"COUNTRY_BLOCKED", "country blocked"}):
 		return ClassBlocked
