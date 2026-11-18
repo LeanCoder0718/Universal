@@ -143,10 +143,17 @@ func (b *ProfileBuilder) NotABrand(val string) *ProfileBuilder {
 	return b
 }
 
+func (b *ProfileBuilder) ID(id string) *ProfileBuilder {
+	b.spec.id = id
+	return b
+}
+
 // Build construye el ProfileSpec inmutable, generando su ID automáticamente.
 func (b *ProfileBuilder) Build() *ProfileSpec {
 	spec := b.spec // copia por valor — el builder no retiene referencia mutable
-	spec.id = generateProfileID(spec.platform, spec.clientType, spec.version)
+	if spec.id == "" {
+		spec.id = generateProfileID(spec.platform, spec.clientType, spec.version)
+	}
 
 	// Inferir defaults si no se proporcionaron
 	if spec.platformName == "" {

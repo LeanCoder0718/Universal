@@ -82,6 +82,10 @@ func TestProfileRegistry_Categories(t *testing.T) {
 	if len(androidChromeProfiles) == 0 {
 		t.Fatalf("ForMode(ModeAndroidChrome) returned 0 profiles")
 	}
+	if len(androidChromeProfiles) < 5000 {
+		t.Errorf("Se esperaban al menos 5.000 perfiles de Android Chrome, obtenidos: %d", len(androidChromeProfiles))
+	}
+	t.Logf("Total perfiles Android Chrome registrados: %d", len(androidChromeProfiles))
 	for _, p := range androidChromeProfiles {
 		if p.Platform() != Profiles.PlatformAndroid || p.ClientType() != Profiles.ClientChrome {
 			t.Errorf("AndroidChrome profile %s has invalid platform/client: %s / %s", p.ID(), p.Platform(), p.ClientType())

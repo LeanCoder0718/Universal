@@ -1,6 +1,8 @@
 package Profiles
 
 import (
+	"fmt"
+
 	"github.com/bogdanfinn/tls-client/profiles"
 )
 
@@ -415,31 +417,37 @@ func registerAndroidChrome(r *Registry) {
 		IsMobile:            true,
 	}
 
-	androidChromeSpecs := []struct {
+	chromeEngines := []struct {
 		major     string
 		full      string
 		profile   profiles.ClientProfile
 		notABrand string
 	}{
-		{"131", "131.0.6778.135", profiles.Chrome_131, `"Not(A:Brand"`},
 		{"133", "133.0.6943.137", profiles.Chrome_133, `"Not/A)Brand"`},
+		{"131", "131.0.6778.135", profiles.Chrome_131, `"Not(A:Brand"`},
 	}
 
-	for _, c := range androidChromeSpecs {
-		ua := "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP2A.240805.005) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/" + c.full + " Mobile Safari/537.36"
-		secUA := c.notABrand + `;v="99", "Google Chrome";v="` + c.major + `", "Chromium";v="` + c.major + `"`
+	// Registrar catálogo masivo de dispositivos reales verificados (Samsung, Motorola, Xiaomi, Pixel, OnePlus, etc.)
+	for idx, dev := range AndroidDeviceCatalog {
+		for cIdx, c := range chromeEngines {
+			ua := "Mozilla/5.0 (Linux; Android " + dev.OSVersion + "; " + dev.Model + " Build/" + dev.BuildID + ") AppleWebKit/537.36 (KHTML, like Gecko) Chrome/" + c.full + " Mobile Safari/537.36"
+			secUA := c.notABrand + `;v="99", "Google Chrome";v="` + c.major + `", "Chromium";v="` + c.major + `"`
+			uaFrag := "Linux; Android " + dev.OSVersion + "; " + dev.Model
+			uniqueID := fmt.Sprintf("android_chrome_%s_dev%d_%d", c.major, idx+1, cIdx+1)
 
-		_ = r.Register(NewProfileBuilder(PlatformAndroid, ClientChrome, c.major).
-			UserAgent(ua).
-			SecChUA(secUA).
-			SecChUAMobile("?1").
-			SecChUAPlatform(`"Android"`).
-			PlatformName("Android").
-			UAFragment("Linux; Android 14; Pixel 8").
-			TLSProfile(c.profile).
-			Capabilities(androidChromeCaps).
-			NotABrand(c.notABrand).
-			Build())
+			_ = r.Register(NewProfileBuilder(PlatformAndroid, ClientChrome, c.major).
+				ID(uniqueID).
+				UserAgent(ua).
+				SecChUA(secUA).
+				SecChUAMobile("?1").
+				SecChUAPlatform(`"Android"`).
+				PlatformName("Android").
+				UAFragment(uaFrag).
+				TLSProfile(c.profile).
+				Capabilities(androidChromeCaps).
+				NotABrand(c.notABrand).
+				Build())
+		}
 	}
 }
 
