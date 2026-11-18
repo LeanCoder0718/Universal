@@ -68,6 +68,11 @@ func registerWindowsChrome(r *Registry) {
 		profile   profiles.ClientProfile
 		notABrand string
 	}{
+		{"131", "131.0.0.0", profiles.Chrome_131, `"Not(A:Brand"`},
+		{"133", "133.0.0.0", profiles.Chrome_133, `"Not/A)Brand"`},
+		{"144", "144.0.0.0", profiles.Chrome_144, `"Not(A:Brand"`},
+		{"146", "146.0.0.0", profiles.Chrome_146, `"Not(A:Brand"`},
+		{"150", "150.0.0.0", profiles.Chrome_150, `"Not(A:Brand"`},
 		{"152", "152.0.0.0", profiles.Chrome_152, `"Not(A:Brand"`},
 	}
 
@@ -418,8 +423,8 @@ func registerAndroidChrome(r *Registry) {
 		profile   profiles.ClientProfile
 		notABrand string
 	}{
-		{"152", "152.0.0.0", profiles.Chrome_152, `"Not(A:Brand"`},
-		{"152", "152.0.0.0", profiles.Chrome_152_PSK, `"Not(A:Brand"`},
+		{"133", "133.0.6943.137", profiles.Chrome_133, `"Not/A)Brand"`},
+		{"131", "131.0.6778.135", profiles.Chrome_131, `"Not(A:Brand"`},
 	}
 
 	// Registrar catálogo masivo de dispositivos reales verificados (Samsung, Motorola, Xiaomi, Pixel, OnePlus, etc.)
