@@ -39,9 +39,7 @@ type chromeRelease struct {
 }
 
 var chromeReleases = []chromeRelease{
-	{"131", "131.0.0.0", profiles.Chrome_131, `"Not(A:Brand"`},
-	{"132", "132.0.0.0", profiles.Chrome_133, `"Not A(Brand"`},
-	{"133", "133.0.0.0", profiles.Chrome_133, `"Not/A)Brand"`},
+	{"152", "152.0.0.0", profiles.Chrome_152, `"Not(A:Brand"`},
 }
 
 type firefoxRelease struct {

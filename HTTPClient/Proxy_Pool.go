@@ -23,23 +23,46 @@ import (
 	"github.com/google/uuid"
 )
 
-// FormatProxyUserWithSession reemplaza o agrega el sufijo -session-<sessionID> al usuario del proxy.
+// FormatProxyUserWithSession reemplaza o agrega el identificador de sesión sticky al usuario del proxy.
+// Soporta tanto la sintaxis de DataImpulse ("__cr.br;sessid.<id>") como la estándar ("-session-<id>").
 func FormatProxyUserWithSession(user, sessionID string) string {
 	if user == "" || sessionID == "" {
 		return user
 	}
+
+	// Proveedores con parámetros delimitados por "__" (ej: DataImpulse: login__cr.br;sessid.<id>)
+	if strings.Contains(user, "__") {
+		clean := user
+		for _, tag := range []string{";sessid.", ";sid.", "__sessid.", "__sid."} {
+			if idx := strings.Index(clean, tag); idx != -1 {
+				rest := clean[idx+len(tag):]
+				endIdx := strings.IndexAny(rest, ";_:@")
+				if strings.HasPrefix(tag, "__") {
+					if endIdx == -1 {
+						clean = clean[:idx] + "__"
+					} else {
+						clean = clean[:idx] + "__" + rest[endIdx:]
+					}
+				} else {
+					if endIdx == -1 {
+						clean = clean[:idx]
+					} else {
+						clean = clean[:idx] + rest[endIdx:]
+					}
+				}
+			}
+		}
+		clean = strings.TrimRight(clean, ";")
+		if strings.HasSuffix(clean, "__") {
+			return clean + "sessid." + sessionID
+		}
+		return clean + ";sessid." + sessionID
+	}
+
+	// Proveedores estándar (BrightData, Smartproxy, Oxylabs, etc: login-country-br-session-<id>)
 	cleanUser := user
 	if idx := strings.Index(cleanUser, "-session-"); idx != -1 {
 		rest := cleanUser[idx+len("-session-"):]
-		endIdx := strings.IndexAny(rest, "-_:@")
-		if endIdx == -1 {
-			cleanUser = cleanUser[:idx]
-		} else {
-			cleanUser = cleanUser[:idx] + rest[endIdx:]
-		}
-	}
-	if idx := strings.Index(cleanUser, "__sessid."); idx != -1 {
-		rest := cleanUser[idx+len("__sessid."):]
 		endIdx := strings.IndexAny(rest, "-_:@")
 		if endIdx == -1 {
 			cleanUser = cleanUser[:idx]

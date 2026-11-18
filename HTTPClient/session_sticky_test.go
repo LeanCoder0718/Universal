@@ -540,3 +540,65 @@ func TestSession_StickyID_DisabledByDefault(t *testing.T) {
 		t.Errorf("x-session-id no debe enviarse por defecto, recibido: %q", receivedID)
 	}
 }
+
+// 11. Test: FormatProxyUserWithSession soporta DataImpulse (__cr.br;sessid.<id>) y estándar (-session-<id>)
+func TestFormatProxyUserWithSession(t *testing.T) {
+	tests := []struct {
+		name      string
+		user      string
+		sessionID string
+		expected  string
+	}{
+		{
+			name:      "DataImpulse con país",
+			user:      "69528f6acd1705b29417__cr.br",
+			sessionID: "sess123",
+			expected:  "69528f6acd1705b29417__cr.br;sessid.sess123",
+		},
+		{
+			name:      "DataImpulse reemplazo de sessid previo con punto y coma",
+			user:      "69528f6acd1705b29417__cr.br;sessid.old456",
+			sessionID: "new789",
+			expected:  "69528f6acd1705b29417__cr.br;sessid.new789",
+		},
+		{
+			name:      "DataImpulse solo login y sessid previo",
+			user:      "69528f6acd1705b29417__sessid.old456",
+			sessionID: "new789",
+			expected:  "69528f6acd1705b29417__sessid.new789",
+		},
+		{
+			name:      "DataImpulse login con doble guión bajo al final",
+			user:      "69528f6acd1705b29417__",
+			sessionID: "sess123",
+			expected:  "69528f6acd1705b29417__sessid.sess123",
+		},
+		{
+			name:      "Proveedor estándar sin sesión previa",
+			user:      "lum-customer-zone-br",
+			sessionID: "sess123",
+			expected:  "lum-customer-zone-br-session-sess123",
+		},
+		{
+			name:      "Proveedor estándar con sesión previa reemplazada",
+			user:      "lum-customer-zone-br-session-old456",
+			sessionID: "new789",
+			expected:  "lum-customer-zone-br-session-new789",
+		},
+		{
+			name:      "Usuario vacío no altera nada",
+			user:      "",
+			sessionID: "sess123",
+			expected:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FormatProxyUserWithSession(tt.user, tt.sessionID)
+			if got != tt.expected {
+				t.Errorf("FormatProxyUserWithSession(%q, %q) = %q, esperado %q", tt.user, tt.sessionID, got, tt.expected)
+			}
+		})
+	}
+}
