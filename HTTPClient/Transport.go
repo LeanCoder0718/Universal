@@ -48,7 +48,7 @@ func (TLSClientFactory) New(p Params) (Client, error) {
 	options := []tlsclient.HttpClientOption{
 		tlsclient.WithTimeoutSeconds(timeoutSec),
 		tlsclient.WithClientProfile(p.TLSProfile),
-		tlsclient.WithRandomTLSExtensionOrder(),
+		//tlsclient.WithRandomTLSExtensionOrder(),
 		tlsclient.WithTransportOptions(buildTransportOptions(p.Transport)),
 		tlsclient.WithDialer(net.Dialer{
 			Timeout:   p.Transport.DialTimeout,

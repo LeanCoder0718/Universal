@@ -69,11 +69,8 @@ func registerWindowsChrome(r *Registry) {
 		notABrand string
 	}{
 		{"131", "131.0.0.0", profiles.Chrome_131, `"Not(A:Brand"`},
+		{"132", "132.0.0.0", profiles.Chrome_133, `"Not A(Brand"`},
 		{"133", "133.0.0.0", profiles.Chrome_133, `"Not/A)Brand"`},
-		{"144", "144.0.0.0", profiles.Chrome_144, `"Not(A:Brand"`},
-		{"146", "146.0.0.0", profiles.Chrome_146, `"Not(A:Brand"`},
-		{"150", "150.0.0.0", profiles.Chrome_150, `"Not(A:Brand"`},
-		{"152", "152.0.0.0", profiles.Chrome_152, `"Not(A:Brand"`},
 	}
 
 	for _, c := range chromeSpecs {
